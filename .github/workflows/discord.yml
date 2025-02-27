@@ -22,7 +22,11 @@ jobs:
           name: work-distribution-output
           path: output
 
-      # Step 3: Check if output.txt exists and format the message for Discord
+      # Step 3: Debug downloaded files
+      - name: Debug downloaded files
+        run: ls -lah output
+
+      # Step 4: Check if output.txt exists and format the message for Discord
       - name: Read and format output for Discord
         run: |
           if [ ! -f output/output.txt ]; then
@@ -54,11 +58,11 @@ jobs:
           # Prepare Discord payload
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
-      # Step 4: Debug the Discord payload (Optional step for checking the content before sending)
+      # Step 5: Debug the Discord payload (Optional step for checking the content before sending)
       - name: Debug Discord Payload
         run: cat discord_payload.json
 
-      # Step 5: Send the results to Discord
+      # Step 6: Send the results to Discord
       - name: Send to Discord
         run: |
           curl -X POST -H "Content-Type: application/json" \
