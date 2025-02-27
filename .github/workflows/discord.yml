@@ -1,0 +1,33 @@
+name: Send Results to Discord
+
+on:
+  workflow_run:
+    workflows: ["Run Docker Container"]  
+    types:
+      - completed
+
+jobs:
+  send-to-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download output artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: output 
+          path: output 
+
+      - name: Read output file
+        id: read-output
+        run: |
+          OUTPUT=$(cat output/output.txt)  # Read the content of the output.txt file
+          echo "OUTPUT<<EOF" >> $GITHUB_ENV
+          echo "$OUTPUT" >> $GITHUB_ENV  # Set the content as an environment variable
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Send to Discord
+        uses: Ilshidur/action-discord@v1
+        with:
+          args: ${{ env.OUTPUT }} 
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
