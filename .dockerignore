@@ -1,0 +1,10 @@
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore the Rust build target directory
+target
+
+# Ignore local development files
+.env
+*.log
