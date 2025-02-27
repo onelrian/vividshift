@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # This runs every two weeks at midnight UTC
+    - cron: '0 0 */14 * *'  # Runs every two weeks
 
 jobs:
   build-and-run:
@@ -38,31 +38,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image to GHCR
+      - name: Force Rebuild and Push Docker Image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
+          docker build --no-cache -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
-      - name: Run Docker container
+      - name: Run Docker Container and Save Output
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
 
-      - name: Debug output.txt
-        run: |
-          cat output.txt
+      - name: Debug Output
+        run: cat output.txt
 
-      - name: Upload output as artifact
+      - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: output
           path: output.txt
-
-      - name: Send results to Discord
-        run: |
-          OUTPUT=$(cat output.txt)
-          echo "OUTPUT:"
-          echo "$OUTPUT"
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
-            ${{ secrets.DISCORD_WEBHOOK }}
