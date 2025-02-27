@@ -14,28 +14,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Output Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: output
-          path: output
+      - name: Install GitHub CLI & jq
+        run: |
+          sudo apt update
+          sudo apt install -y gh jq
+
+      - name: Authenticate GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+
+      - name: Download output artifact using GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download --name output --dir output
 
       - name: Check if output file exists
         run: |
-          if [ ! -s output/output.txt ]; then
-            echo "Error: output.txt is missing or empty! Skipping Discord notification."
+          if [ ! -f output/output.txt ]; then
+            echo "Error: output.txt not found! Skipping Discord notification."
             exit 0
           fi
 
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-          CHAR_LIMIT=1900
 
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
+            
             case "$key" in
               "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -47,15 +57,16 @@ jobs:
               *) icon="🔹"; sub_icon="";;
             esac
 
-            LINE_CONTENT="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-            if [ ${#FORMATTED_OUTPUT} -le $CHAR_LIMIT ]; then
-              FORMATTED_OUTPUT+="$LINE_CONTENT"
-            fi
+            FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < output/output.txt
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
-      - name: Send to Discord
+      - name: Debug Discord Payload
+        run: |
+          cat discord_payload.json
+
+      - name: Send to Discord using curl
         run: |
           curl -X POST -H "Content-Type: application/json" \
             -d @discord_payload.json \
