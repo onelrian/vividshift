@@ -54,8 +54,8 @@ jobs:
           path: output.txt
 
       - name: Send results to Discord
-        uses: Ilshidur/action-discord@v1
+        uses: appleboy/discord-action@v1
         with:
-          args: "Work distribution results: $(cat output.txt)"
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
+          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
+          message: "Work distribution results: $(cat output.txt)"
