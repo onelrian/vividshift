@@ -25,20 +25,26 @@ jobs:
 
       - name: Check if output file exists
         run: |
-          if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found! Skipping Discord notification."
-            exit 0  # Do not fail workflow if the file is missing
+          if [ ! -s output/output.txt ]; then
+            echo "Error: output.txt not found or is empty! Skipping Discord notification."
+            exit 0  # Do not fail workflow
           fi
 
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
 
-          # Format the output into Discord-friendly text
           while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
+            # Ensure line is valid (skip empty lines)
+            [[ -z "$line" ]] && continue
+
+            key=$(echo "$line" | awk -F': ' '{print $1}' | xargs)
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-            
+
+            # Skip lines that do not match expected format
+            [[ -z "$key" || -z "$value" ]] && continue
+
+            # Emoji mapping for locations
             case "$key" in
               "Tanks") icon="🛢️";;
               "Bin") icon="🗑️";;
@@ -53,8 +59,10 @@ jobs:
             FORMATTED_OUTPUT+="$icon **$key**: $value\n"
           done < output/output.txt
 
-          # Save to JSON for curl
-          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
+          # Escape special characters for JSON
+          FORMATTED_OUTPUT=$(echo "$FORMATTED_OUTPUT" | jq -R -s '.')
+
+          echo "{\"content\": $FORMATTED_OUTPUT}" > discord_payload.json
 
       - name: Send to Discord using curl
         run: |
