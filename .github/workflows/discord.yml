@@ -17,22 +17,33 @@ jobs:
       - name: Install jq
         run: sudo apt update && sudo apt install -y jq
 
-      - name: Check if WORK_DATA exists
+      - name: Download output artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: output
+          path: output
+
+      - name: Check if output file exists
         run: |
-          if [ -z "${{ env.WORK_DATA }}" ]; then
-            echo "Error: WORK_DATA not found! Skipping Discord notification."
-            exit 0  # Skip if WORK_DATA is not available
+          if [ ! -f output/output.txt ]; then
+            echo "Error: output.txt not found! Skipping Discord notification."
+            exit 0  # Do not fail workflow if the file is missing
           fi
+
+      - name: Debug output file content
+        run: |
+          cat output/output.txt
 
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
 
-          # Format the output into Discord-friendly text
-          while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
+          # Read and format JSON output from file
+          cat output/output.txt | jq -r 'to_entries | .[] | "\(.key): \(.value | join(", "))"' | while IFS= read -r line; do
+            key=$(echo "$line" | cut -d: -f1)
+            value=$(echo "$line" | cut -d: -f2-)
 
+            # Assign icons based on the key
             case "$key" in
               "Tanks") icon="🛢️";;
               "Bin") icon="🗑️";;
@@ -45,7 +56,7 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**: $value\n"
-          done <<< "${{ env.WORK_DATA }}"
+          done
 
           # Save to JSON for curl
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json

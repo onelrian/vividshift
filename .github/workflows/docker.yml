@@ -45,10 +45,10 @@ jobs:
 
       - name: Run Docker container
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.json
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
 
       - name: Upload output as artifact
         uses: actions/upload-artifact@v4
         with:
           name: output
-          path: output.json
+          path: output.txt
