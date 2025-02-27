@@ -30,4 +30,4 @@ jobs:
         with:
           args: ${{ env.OUTPUT }} 
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }} 
