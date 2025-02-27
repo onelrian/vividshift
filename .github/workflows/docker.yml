@@ -37,19 +37,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
+          docker build --progress=plain -t ghcr.io/${{ github.repository }}/my-image:${{ github.sha }} .
+          docker tag ghcr.io/${{ github.repository }}/my-image:${{ github.sha }} ghcr.io/${{ github.repository }}/my-image:latest
+
+      - name: Push Docker Image
+        run: |
+          docker push ghcr.io/${{ github.repository }}/my-image:${{ github.sha }}
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
-      - name: Run Docker Container and Save Output
+      - name: Run Docker Container and Capture Output
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt || { echo "Error: Container execution failed!" && exit 1; }
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:${{ github.sha }} | tee output.txt
+          sleep 2  # Ensure file system sync before checking output file
 
       - name: Debug Files in Workspace
         run: ls -lah
 
-      - name: Debug Output
+      - name: Validate Output
         run: |
           if [ ! -s output.txt ]; then
             echo "Error: output.txt is missing or empty!"

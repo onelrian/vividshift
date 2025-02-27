@@ -14,38 +14,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI & jq
-        run: |
-          sudo apt update
-          sudo apt install -y gh jq
-
-      - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh auth setup-git
-
-      - name: Download output artifact using GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh run download --name output --dir output
+      - name: Download output artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: output
+          path: output
 
       - name: Check if output file exists
         run: |
           if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found! Skipping Discord notification."
+            echo "❌ Error: output.txt not found! Skipping Discord notification."
             exit 0
           fi
 
       - name: Read and format output
         run: |
-          FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-
+          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-            
+
             case "$key" in
               "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -60,14 +48,14 @@ jobs:
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < output/output.txt
 
-          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
+          echo "$FORMATTED_OUTPUT" | jq -Rs '{content: .}' > discord_payload.json
 
       - name: Debug Discord Payload
-        run: |
-          cat discord_payload.json
+        run: cat discord_payload.json
 
-      - name: Send to Discord using curl
+      - name: Send to Discord
         run: |
           curl -X POST -H "Content-Type: application/json" \
+            --fail --silent --show-error \
             -d @discord_payload.json \
             ${{ secrets.DISCORD_WEBHOOK }}
