@@ -15,42 +15,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Install GitHub CLI & jq
-      - name: Install GitHub CLI & jq
-        run: |
-          sudo apt update
-          sudo apt install -y gh jq
+      # Step 2: Download output artifact from the previous workflow
+      - name: Download output artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: work-distribution-output
+          path: output
 
-      # Step 3: Authenticate GitHub CLI
-      - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh auth setup-git
+      # Step 3: Debug downloaded files
+      - name: Debug downloaded files
+        run: ls -lah output
 
-      # Step 4: Download output artifact using GitHub CLI
-      - name: Download output artifact using GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh run download --name work-distribution-output --dir output
-
-      # Step 5: Check if output.txt exists
-      - name: Check if output file exists
+      # Step 4: Check if output.txt exists and format the message for Discord
+      - name: Read and format output for Discord
         run: |
           if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found! Skipping Discord notification."
+            echo "❌ Error: output.txt not found! Skipping Discord notification."
             exit 0
           fi
 
-      # Step 6: Read and format output for Discord
-      - name: Read and format output for Discord
-        run: |
-          FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-          while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-            
+          # Prepare formatted output for Discord
+          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
+          jq -r 'to_entries | .[] | "\(.key): \(.value)"' output/output.txt | while IFS= read -r line; do
+            key=$(echo "$line" | cut -d: -f1)
+            value=$(echo "$line" | cut -d: -f2-)
+
+            # Assign icons based on key
             case "$key" in
               "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -61,18 +51,21 @@ jobs:
               "Parlor") icon="🛋️"; sub_icon="🧹";;
               *) icon="🔹"; sub_icon="";;
             esac
+
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done < output/output.txt
+          done
+
+          # Prepare Discord payload
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
-      # Step 7: Debug the Discord payload (Optional step for checking the content before sending)
+      # Step 5: Debug the Discord payload (Optional step for checking the content before sending)
       - name: Debug Discord Payload
-        run: |
-          cat discord_payload.json
+        run: cat discord_payload.json
 
-      # Step 8: Send the results to Discord
-      - name: Send to Discord using curl
+      # Step 6: Send the results to Discord
+      - name: Send to Discord
         run: |
           curl -X POST -H "Content-Type: application/json" \
+            --fail --silent --show-error \
             -d @discord_payload.json \
             ${{ secrets.DISCORD_WEBHOOK }}

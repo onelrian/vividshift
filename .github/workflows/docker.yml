@@ -6,22 +6,19 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'
+    - cron: '0 0 */14 * *' # Runs every 14 days
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
 
     steps:
-  
       - name: Checkout repository
         uses: actions/checkout@v4
 
-  
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-  
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -33,17 +30,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-  
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-  
       - name: Run Docker Container and collect output
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
 
-  
       - name: Validate output
         run: |
           if [ ! -f output.txt ]; then
@@ -52,9 +46,8 @@ jobs:
           fi
           cat output.txt
 
-  
       - name: Upload output artifact
         uses: actions/upload-artifact@v4
         with:
           name: work-distribution-output
-          path: output.t
+          path: output.txt
