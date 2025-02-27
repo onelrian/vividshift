@@ -54,8 +54,7 @@ jobs:
           path: output.txt
 
       - name: Send results to Discord
-        uses: Ilshidur/action-discord@v1.2.0  # Specify a valid version here
+        uses: ryanjohansen/discord-webhook@v1.0.0  # Use the discord-webhook action
         with:
-          args: "Work distribution results: $(cat output.txt)"
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          url: ${{ secrets.DISCORD_WEBHOOK }}  # Your Discord webhook URL
+          message: "Work distribution results: $(cat output.txt)"
