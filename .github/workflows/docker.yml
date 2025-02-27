@@ -40,25 +40,23 @@ jobs:
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
           cat output.txt
 
-      - name: Set output for Discord message
-        id: set_output
+      - name: Set workflow output
         run: |
-          echo "::set-output name=work_output::$(cat output.txt)"
+          echo "WORK_OUTPUT<<EOF" >> $GITHUB_ENV
+          cat output.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
   send-to-discord:
     needs: build-and-run
     runs-on: ubuntu-latest
+
     steps:
-      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Read the output from the build job
       - name: Read and format output for Discord
         run: |
-          OUTPUT="${{ needs.build-and-run.outputs.work_output }}"
-
-          if [ -z "$OUTPUT" ]; then
+          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
             echo "❌ Error: No output found! Skipping Discord notification."
             exit 0
           fi
@@ -81,13 +79,20 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done <<< "$OUTPUT"
+          done <<< "${{ env.WORK_OUTPUT }}"
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
+      - name: Debug Discord Payload
+        run: cat discord_payload.json
+
       - name: Send to Discord
         run: |
-          curl -X POST -H "Content-Type: application/json" \
-            --fail --silent --show-error \
-            -d @discord_payload.json \
-            ${{ secrets.DISCORD_WEBHOOK }}
+          if [ -s discord_payload.json ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              --fail --silent --show-error \
+              -d @discord_payload.json \
+              ${{ secrets.DISCORD_WEBHOOK }}
+          else
+            echo "⚠️ No data to send to Discord."
+          fi
