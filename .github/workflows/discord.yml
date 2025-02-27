@@ -2,7 +2,7 @@ name: Send Results to Discord
 
 on:
   workflow_run:
-    workflows: ["Run Docker Container"]
+    workflows: ["Build and Deploy Docker Container"]
     types:
       - completed
 
@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      
+      # Step 2: Download output artifact from the previous workflow
       - name: Download output artifact
         uses: actions/download-artifact@v4
         with:
           name: output
           path: output
 
-      
+      # Step 3: Check if output.txt exists and format the message for Discord
       - name: Read and format output for Discord
         run: |
           if [ ! -f output/output.txt ]; then
@@ -54,11 +54,11 @@ jobs:
           # Prepare Discord payload
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
-      
+      # Step 4: Debug the Discord payload (Optional step for checking the content before sending)
       - name: Debug Discord Payload
         run: cat discord_payload.json
 
-      
+      # Step 5: Send the results to Discord
       - name: Send to Discord
         run: |
           curl -X POST -H "Content-Type: application/json" \
