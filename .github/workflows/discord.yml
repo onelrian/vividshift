@@ -14,10 +14,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
+      - name: Install GitHub CLI & jq
         run: |
           sudo apt update
-          sudo apt install -y gh
+          sudo apt install -y gh jq
 
       - name: Authenticate GitHub CLI
         env:
@@ -34,14 +34,12 @@ jobs:
       - name: Read output file
         id: read-output
         run: |
-          OUTPUT=$(cat output/output.txt)  # Read the content of the output.txt file
-          echo "OUTPUT<<EOF" >> $GITHUB_ENV
-          echo "$OUTPUT" >> $GITHUB_ENV  # Set the content as an environment variable
-          echo "EOF" >> $GITHUB_ENV
+          OUTPUT=$(cat output/output.txt)  
+          echo "OUTPUT=$(jq -Rs . <<< \"$OUTPUT\")" >> $GITHUB_ENV
 
       - name: Send to Discord using curl
         run: |
           curl -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"content\": \"${{ env.OUTPUT }}\"}" \
+            -d "{\"content\": ${{ env.OUTPUT }}}" \
             ${{ secrets.DISCORD_WEBHOOK }}
