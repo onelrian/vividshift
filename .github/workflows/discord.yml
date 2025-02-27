@@ -31,15 +31,13 @@ jobs:
         run: |
           gh run download --name output --dir output
 
-      - name: Read output file
-        id: read-output
+      - name: Read and encode output file
         run: |
-          OUTPUT=$(cat output/output.txt | jq -Rs .)  
-          echo "OUTPUT=$OUTPUT" >> $GITHUB_ENV
+          OUTPUT=$(jq -Rs . < output/output.txt)
+          echo "{\"content\": $OUTPUT}" > discord_payload.json
 
       - name: Send to Discord using curl
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": ${{ env.OUTPUT }}}" \
+          curl -X POST -H "Content-Type: application/json" \
+            -d @discord_payload.json \
             ${{ secrets.DISCORD_WEBHOOK }}
