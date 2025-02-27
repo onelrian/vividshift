@@ -11,29 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      
       - name: Download output artifact
         uses: actions/download-artifact@v4
         with:
           name: output
           path: output
 
-      - name: Check if output file exists
+      
+      - name: Read and format output for Discord
         run: |
           if [ ! -f output/output.txt ]; then
             echo "❌ Error: output.txt not found! Skipping Discord notification."
             exit 0
           fi
 
-      - name: Read and format output
-        run: |
+          # Prepare formatted output for Discord
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-          while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
+          jq -r 'to_entries | .[] | "\(.key): \(.value)"' output/output.txt | while IFS= read -r line; do
+            key=$(echo "$line" | cut -d: -f1)
+            value=$(echo "$line" | cut -d: -f2-)
 
+            # Assign icons based on key
             case "$key" in
               "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -46,13 +49,16 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done < output/output.txt
+          done
 
-          echo "$FORMATTED_OUTPUT" | jq -Rs '{content: .}' > discord_payload.json
+          # Prepare Discord payload
+          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
+      
       - name: Debug Discord Payload
         run: cat discord_payload.json
 
+      
       - name: Send to Discord
         run: |
           curl -X POST -H "Content-Type: application/json" \
