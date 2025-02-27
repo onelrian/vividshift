@@ -17,32 +17,42 @@ jobs:
       - name: Install jq
         run: sudo apt update && sudo apt install -y jq
 
-      - name: Download output artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: output-artifact  # Make sure the name matches exactly
-          path: output
+      # Wait for artifact to be available and retry for a while
+      - name: Wait for output artifact
+        run: |
+          retries=0
+          max_retries=5
+          while [ $retries -lt $max_retries ]; do
+            echo "Attempting to download artifact..."
+            gh run download --name output-artifact --dir ./output || true
+            if [ -f "./output/output.txt" ]; then
+              echo "Artifact found and downloaded."
+              break
+            fi
+            retries=$((retries + 1))
+            echo "Retrying... ($retries/$max_retries)"
+            sleep 10
+          done
+          if [ $retries -eq $max_retries ]; then
+            echo "Error: Artifact not found after $max_retries attempts. Skipping Discord notification."
+            exit 0
+          fi
 
       - name: Check if output file exists
         run: |
           if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found or is empty! Skipping Discord notification."
-            exit 0  # Do not fail workflow
+            echo "Error: output.txt not found! Skipping Discord notification."
+            exit 0  # Do not fail workflow if the file is missing
           fi
 
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-
+          
+          # Format the output into Discord-friendly text
           while IFS= read -r line; do
-            # Ensure line is valid (skip empty lines)
-            [[ -z "$line" ]] && continue
-
             key=$(echo "$line" | awk -F': ' '{print $1}' | xargs)
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
-            # Skip lines that do not match expected format
-            [[ -z "$key" || -z "$value" ]] && continue
 
             # Emoji mapping for locations
             case "$key" in
