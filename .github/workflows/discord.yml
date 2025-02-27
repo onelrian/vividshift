@@ -14,22 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI & jq
-        run: |
-          sudo apt update
-          sudo apt install -y gh jq
+      - name: Install jq
+        run: sudo apt update && sudo apt install -y jq
 
-      - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh auth setup-git
-
-      - name: Download output artifact using GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh run download --name output --dir output
+      - name: Download output artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: output
+          path: output
 
       - name: Read and format output
         run: |
@@ -39,15 +31,25 @@ jobs:
             exit 1
           fi
 
-          # Convert plain text to JSON format
-          jq -n --slurpfile data output/output.txt '
-            reduce ($data[] | capture("(?<key>[^:]+): (?<values>.*)") | {(.key): .values | split(", ")}) as $entry ({}; . + $entry)
-          ' > output/output.json
+          # Convert plain text format to JSON manually
+          echo "{" > output/output.json
+          awk -F': ' '
+            {
+              key = $1
+              value = $2
+              gsub(/"/, "", key)
+              gsub(/\[/, "[\"", value)
+              gsub(/\]/, "\"]", value)
+              gsub(/, /, "\", \"", value)
+              print "\"" key "\": " value ","
+            }
+          ' output/output.txt | sed '$ s/,$//' >> output/output.json
+          echo "}" >> output/output.json
 
-          # Validate the JSON file
+          # Validate JSON file
           if ! jq empty output/output.json >/dev/null 2>&1; then
-            echo "Error: Failed to convert to JSON!" >&2
-            cat output/output.txt  # Print file for debugging
+            echo "Error: JSON conversion failed!" >&2
+            cat output/output.txt  # Print for debugging
             exit 1
           fi
 
