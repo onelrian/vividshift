@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # Runs every two weeks at midnight UTC
+    - cron: '0 0 */14 * *'  # This runs every two weeks at midnight UTC
 
 jobs:
   build-and-run:
@@ -21,6 +21,7 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
+        id: cache
         with:
           path: |
             ~/.cargo/registry
@@ -42,38 +43,27 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
-      - name: Run Docker container and capture output
+      - name: Run Docker container
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt || echo "Error: Docker run failed!" > output.txt
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
 
-      - name: Upload output as artifact
+      - name: Check if output.txt exists
+        run: |
+          if [ ! -f output.txt ]; then
+            echo "Error: output.txt not found! Skipping artifact upload."
+            exit 0  # Do not fail workflow if the file is missing
+          fi
+
+      - name: Upload output artifact
         uses: actions/upload-artifact@v4
         with:
-          name: output
+          name: output-artifact  # Use a clear name for the artifact
           path: output.txt
-          retention-days: 7  # Prevents artifact expiration issues
-
-      - name: Install jq
-        run: sudo apt update && sudo apt install -y jq
 
       - name: Send results to Discord
         run: |
-          # Check if output.txt exists and is not empty
-          if [ ! -s output.txt ]; then
-            echo "Error: output.txt is empty or missing!"
-            exit 1
-          fi
-
-          # Read and sanitize output
-          OUTPUT=$(cat output.txt | jq -R -s '.')
-
-          # Truncate if message exceeds Discord's 2000-character limit
-          MAX_LENGTH=1900
-          if [ ${#OUTPUT} -gt $MAX_LENGTH ]; then
-            OUTPUT="${OUTPUT:0:$MAX_LENGTH}... (truncated)"
-          fi
-
-          # Send message to Discord
-          curl -X POST -H "Content-Type: application/json" \
-            -d "{\"content\": \"📊 **Work Distribution Results**:\n$OUTPUT\"}" \
+          OUTPUT=$(cat output.txt)
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
             ${{ secrets.DISCORD_WEBHOOK }}
