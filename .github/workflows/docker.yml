@@ -42,22 +42,21 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
-      - name: Run Docker Container and Save Output
+      - name: Run Docker Container and Capture Output
         run: |
-          # Run the container and capture output in output.txt
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest | tee output.txt
+          # Run the container and capture output
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt; echo "Output captured, checking output.txt"
 
-      - name: Debug Files in Workspace
-        run: ls -lah
-
-      - name: Debug Output
+      - name: Check if output.txt exists and is not empty
         run: |
-          # Check if output.txt exists and is not empty
+          # Check if output.txt exists and isn't empty
+          echo "Checking output.txt"
+          ls -l output.txt
+          cat output.txt
           if [ ! -s output.txt ]; then
             echo "Error: output.txt is missing or empty!"
             exit 1
           fi
-          cat output.txt
 
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
