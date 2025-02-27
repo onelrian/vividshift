@@ -33,15 +33,28 @@ jobs:
 
       - name: Read and format output
         run: |
-          FORMATTED_OUTPUT="**Work Distribution Results** 📊\n\n"
+          # Check if output file exists
+          if [ ! -f output/output.txt ]; then
+            echo "Error: output.txt not found!" >&2
+            exit 1
+          fi
 
-          FORMATTED_OUTPUT+="🛢️ **Tanks**:\n➜ $(jq -r '.Tanks | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🗑️ **Bin**:\n➜ $(jq -r '.Bin | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🚪 **Front**:\n➜ $(jq -r '.Front | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🚻 **Toilet A**:\n➜ $(jq -r '.["Toilet A"] | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🚻 **Toilet B**:\n➜ $(jq -r '.["Toilet B"] | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🏡 **Backyard**:\n➜ $(jq -r '.Backyard | join(", ")' output/output.txt)\n\n"
-          FORMATTED_OUTPUT+="🛋️ **Parlor**:\n➜ $(jq -r '.Parlor | join(", ")' output/output.txt)\n\n"
+          # Validate JSON format
+          if ! jq empty output/output.txt >/dev/null 2>&1; then
+            echo "Error: output.txt is not valid JSON!" >&2
+            cat output/output.txt  # Print file for debugging
+            exit 1
+          fi
+
+          FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
+
+          FORMATTED_OUTPUT+="🛢️ **Tanks**: $(jq -r '.Tanks | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🗑️ **Bin**: $(jq -r '.Bin | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚪 **Front**: $(jq -r '.Front | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet A**: $(jq -r '.["Toilet A"] | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet B**: $(jq -r '.["Toilet B"] | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🏡 **Backyard**: $(jq -r '.Backyard | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🛋️ **Parlor**: $(jq -r '.Parlor | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
