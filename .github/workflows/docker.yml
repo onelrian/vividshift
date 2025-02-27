@@ -30,6 +30,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -41,9 +42,15 @@ jobs:
         run: |
           docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
+
       - name: Run Docker container
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
+
+      - name: Debug output.txt
+        run: |
+          cat output.txt
+
       - name: Upload output as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -53,6 +60,8 @@ jobs:
       - name: Send results to Discord
         run: |
           OUTPUT=$(cat output.txt)
+          echo "OUTPUT:"
+          echo "$OUTPUT"
           curl -X POST \
             -H "Content-Type: application/json" \
             -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
