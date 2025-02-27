@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::collections::HashMap;
 
 pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>> {
     let work_ratios = [
@@ -27,14 +27,17 @@ pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>>
     shuffled_names.shuffle(&mut rng);
 
     let mut index = 0;
-    
+
     // Assign people based on ratio
     for &(domain, ratio) in &work_ratios {
         let count = (ratio * num_people) / total_ratio;
 
         for _ in 0..count {
             if index < num_people {
-                assignments.get_mut(domain).unwrap().push(shuffled_names[index].clone());
+                assignments
+                    .get_mut(domain)
+                    .unwrap()
+                    .push(shuffled_names[index].clone());
                 index += 1;
             }
         }
@@ -51,7 +54,10 @@ pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>>
             .unwrap();
 
         // Modify the least populated domain
-        assignments.get_mut(least_populated).unwrap().push(remaining.remove(0));
+        assignments
+            .get_mut(least_populated)
+            .unwrap()
+            .push(remaining.remove(0));
     }
 
     assignments

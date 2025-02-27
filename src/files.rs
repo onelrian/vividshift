@@ -1,4 +1,7 @@
-use std::{fs::File, io::{self, BufRead}};
+use std::{
+    fs::File,
+    io::{self, BufRead},
+};
 
 pub fn read_names_from_file(filename: &str) -> io::Result<Vec<String>> {
     let file = File::open(filename)?;
