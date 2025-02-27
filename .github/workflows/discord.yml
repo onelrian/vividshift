@@ -19,7 +19,7 @@ jobs:
       - name: Download output artifact
         uses: actions/download-artifact@v4
         with:
-          name: output
+          name: work-distribution-output
           path: output
 
       # Step 3: Check if output.txt exists and format the message for Discord
