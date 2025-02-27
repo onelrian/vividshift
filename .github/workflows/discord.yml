@@ -40,7 +40,7 @@ jobs:
 
       - name: Read and format output
         run: |
-          FORMATTED_OUTPUT="\n**📊 Work Distribution Results**\n\n"
+          FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
 
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
@@ -57,7 +57,7 @@ jobs:
               *) icon="🔹"; sub_icon="";;
             esac
 
-            FORMATTED_OUTPUT+="$icon  **$key**\n$sub_icon  Assigned: $value\n\n"
+            FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < output/output.txt
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
