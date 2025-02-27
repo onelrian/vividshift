@@ -39,22 +39,27 @@ jobs:
             exit 1
           fi
 
-          # Validate JSON format
-          if ! jq empty output/output.txt >/dev/null 2>&1; then
-            echo "Error: output.txt is not valid JSON!" >&2
+          # Convert plain text to JSON format
+          jq -n --slurpfile data output/output.txt '
+            reduce ($data[] | capture("(?<key>[^:]+): (?<values>.*)") | {(.key): .values | split(", ")}) as $entry ({}; . + $entry)
+          ' > output/output.json
+
+          # Validate the JSON file
+          if ! jq empty output/output.json >/dev/null 2>&1; then
+            echo "Error: Failed to convert to JSON!" >&2
             cat output/output.txt  # Print file for debugging
             exit 1
           fi
 
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
 
-          FORMATTED_OUTPUT+="🛢️ **Tanks**: $(jq -r '.Tanks | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🗑️ **Bin**: $(jq -r '.Bin | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🚪 **Front**: $(jq -r '.Front | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🚻 **Toilet A**: $(jq -r '.["Toilet A"] | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🚻 **Toilet B**: $(jq -r '.["Toilet B"] | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🏡 **Backyard**: $(jq -r '.Backyard | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
-          FORMATTED_OUTPUT+="🛋️ **Parlor**: $(jq -r '.Parlor | join(", ")' output/output.txt 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🛢️ **Tanks**: $(jq -r '.Tanks | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🗑️ **Bin**: $(jq -r '.Bin | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚪 **Front**: $(jq -r '.Front | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet A**: $(jq -r '.["Toilet A"] | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet B**: $(jq -r '.["Toilet B"] | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🏡 **Backyard**: $(jq -r '.Backyard | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
+          FORMATTED_OUTPUT+="🛋️ **Parlor**: $(jq -r '.Parlor | join(", ")' output/output.json 2>/dev/null || echo "N/A")\n"
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
