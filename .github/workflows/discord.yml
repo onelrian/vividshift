@@ -17,32 +17,22 @@ jobs:
       - name: Install jq
         run: sudo apt update && sudo apt install -y jq
 
-      - name: Set GH_TOKEN environment variable
-        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-
-      - name: Download output artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: output  # Make sure this matches the artifact name in the first workflow
-          path: output
-
-      - name: Check if output file exists
+      - name: Check if WORK_DATA exists
         run: |
-          if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found! Skipping Discord notification."
-            exit 0  # Do not fail workflow if the file is missing
+          if [ -z "${{ env.WORK_DATA }}" ]; then
+            echo "Error: WORK_DATA not found! Skipping Discord notification."
+            exit 0  # Skip if WORK_DATA is not available
           fi
 
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-          
+
           # Format the output into Discord-friendly text
           while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}' | xargs)
+            key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
-            # Emoji mapping for locations
             case "$key" in
               "Tanks") icon="🛢️";;
               "Bin") icon="🗑️";;
@@ -55,12 +45,10 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**: $value\n"
-          done < output/output.txt
+          done <<< "${{ env.WORK_DATA }}"
 
-          # Escape special characters for JSON
-          FORMATTED_OUTPUT=$(echo "$FORMATTED_OUTPUT" | jq -R -s '.')
-
-          echo "{\"content\": $FORMATTED_OUTPUT}" > discord_payload.json
+          # Save to JSON for curl
+          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Send to Discord using curl
         run: |

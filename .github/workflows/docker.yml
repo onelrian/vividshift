@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # This runs every two weeks at midnight UTC
+    - cron: '0 0 */14 * *'  # Runs every two weeks at midnight UTC
 
 jobs:
   build-and-run:
@@ -47,23 +47,13 @@ jobs:
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
 
-      - name: Check if output.txt exists
+      - name: Set output as environment variable
         run: |
-          if [ ! -f output.txt ]; then
-            echo "Error: output.txt not found! Skipping artifact upload."
-            exit 0  # Do not fail workflow if the file is missing
-          fi
+          OUTPUT=$(cat output.txt)  # Read the content of the output.txt file
+          echo "WORK_DATA=$OUTPUT" >> $GITHUB_ENV  # Pass it as an environment variable
 
-      - name: Upload output artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: output-artifact  # Use a clear name for the artifact
-          path: output.txt
-
-      - name: Send results to Discord
+      - name: Send output to Discord directly (optional)
         run: |
-          OUTPUT=$(cat output.txt)
-          curl -X POST \
-            -H "Content-Type: application/json" \
+          curl -X POST -H "Content-Type: application/json" \
             -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
             ${{ secrets.DISCORD_WEBHOOK }}
