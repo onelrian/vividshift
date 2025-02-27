@@ -1,4 +1,4 @@
-name: Run Docker Container
+name: Build and Deploy Docker Container
 
 on:
   push:
@@ -6,19 +6,22 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # Runs every two weeks
+    - cron: '0 0 */14 * *' 
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
 
     steps:
+     
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -30,36 +33,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
+     
+      - name: Build Docker Image
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
-          docker push ghcr.io/${{ github.repository }}/my-image:latest
+          docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-      - name: Run Docker Container and Capture Output
+      
+      - name: Run Docker Container and collect output
         run: |
-          # Run the container and capture output
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt; echo "Output captured, checking output.txt"
+          docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
 
-      - name: Check if output.txt exists and is not empty
+      
+      - name: Validate output
         run: |
-          # Check if output.txt exists and isn't empty
-          echo "Checking output.txt"
-          ls -l output.txt
-          cat output.txt
-          if [ ! -s output.txt ]; then
-            echo "Error: output.txt is missing or empty!"
+          if [ ! -f output.txt ]; then
+            echo "Error: output.txt is missing!"
             exit 1
           fi
+          cat output.txt
 
-      - name: Upload Output as Artifact
+     
+      - name: Upload output artifact
         uses: actions/upload-artifact@v4
         with:
-          name: output
+          name: work-distribution-output
           path: output.txt
