@@ -50,5 +50,5 @@ jobs:
       - name: Upload output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: output
+          name: work-distribution-output  # Ensure this matches with the second workflow
           path: output.txt

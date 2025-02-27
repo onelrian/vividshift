@@ -20,7 +20,7 @@ jobs:
       - name: Download output artifact
         uses: actions/download-artifact@v4
         with:
-          name: output
+          name: work-distribution-output  # Make sure this matches the artifact name
           path: output
 
       - name: Check if output file exists
@@ -30,20 +30,15 @@ jobs:
             exit 0  # Do not fail workflow if the file is missing
           fi
 
-      - name: Debug output file content
-        run: |
-          cat output/output.txt
-
       - name: Read and format output
         run: |
           FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
 
-          # Read and format JSON output from file
-          cat output/output.txt | jq -r 'to_entries | .[] | "\(.key): \(.value | join(", "))"' | while IFS= read -r line; do
-            key=$(echo "$line" | cut -d: -f1)
-            value=$(echo "$line" | cut -d: -f2-)
-
-            # Assign icons based on the key
+          # Format the output into Discord-friendly text
+          while IFS= read -r line; do
+            key=$(echo "$line" | awk -F': ' '{print $1}')
+            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
+            
             case "$key" in
               "Tanks") icon="🛢️";;
               "Bin") icon="🗑️";;
@@ -56,7 +51,7 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**: $value\n"
-          done
+          done < output/output.txt
 
           # Save to JSON for curl
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
