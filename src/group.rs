@@ -2,7 +2,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashMap;
 
-pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>> {
+pub fn distribute_work(names_a: Vec<String>, names_b: Vec<String>) -> HashMap<&'static str, Vec<String>> {
     let work_ratios = [
         ("Parlor", 4),
         ("Toilet A", 2),
@@ -14,7 +14,7 @@ pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>>
     ];
 
     let total_ratio: usize = work_ratios.iter().map(|&(_, r)| r).sum();
-    let num_people = names.len();
+    let num_people = names_a.len() + names_b.len();
 
     let mut assignments: HashMap<&str, Vec<String>> = HashMap::new();
     for &(domain, _) in &work_ratios {
@@ -23,28 +23,44 @@ pub fn distribute_work(names: Vec<String>) -> HashMap<&'static str, Vec<String>>
 
     // Shuffle the names randomly
     let mut rng = thread_rng();
-    let mut shuffled_names = names;
-    shuffled_names.shuffle(&mut rng);
+    let mut remaining_names = names_a.clone();
+    remaining_names.extend(names_b.clone());
+    remaining_names.shuffle(&mut rng);
 
+    // Assign people from file A to Toilet A
+    for person in names_a {
+        assignments.get_mut("Toilet A").unwrap().push(person);
+    }
+
+    // Assign people from file B to Toilet B
+    for person in names_b {
+        assignments.get_mut("Toilet B").unwrap().push(person);
+    }
+
+    // Now assign remaining people to other domains
     let mut index = 0;
 
-    // Assign people based on ratio
+    // Assign remaining people to other domains based on the ratio
     for &(domain, ratio) in &work_ratios {
+        if domain == "Toilet A" || domain == "Toilet B" {
+            continue; 
+        }
+
         let count = (ratio * num_people) / total_ratio;
 
         for _ in 0..count {
-            if index < num_people {
+            if index < remaining_names.len() {
                 assignments
                     .get_mut(domain)
                     .unwrap()
-                    .push(shuffled_names[index].clone());
+                    .push(remaining_names[index].clone());
                 index += 1;
             }
         }
     }
 
-    // Assign any remaining people
-    let mut remaining = shuffled_names.into_iter().skip(index).collect::<Vec<_>>();
+    // Assign any remaining people to the least populated domain
+    let mut remaining = remaining_names.into_iter().skip(index).collect::<Vec<_>>();
     while !remaining.is_empty() {
         // Find the least populated domain without holding a mutable reference
         let least_populated = assignments
