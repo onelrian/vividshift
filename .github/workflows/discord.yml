@@ -14,13 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up GitHub CLI
-        uses: cli/cli-action@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install GitHub CLI
+        run: |
+          sudo apt update
+          sudo apt install gh
 
       - name: Download output artifact using GitHub CLI
         run: |
+          gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
           gh run download --artifact output --dir output
 
       - name: Read output file
