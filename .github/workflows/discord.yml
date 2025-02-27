@@ -31,14 +31,22 @@ jobs:
         run: |
           gh run download --name output --dir output
 
-      - name: Read and encode output file
+      - name: Read and format output
         run: |
-          OUTPUT=$(jq -Rs . < output/output.txt)
-          echo "{\"content\": $OUTPUT}" > discord_payload.json
+          FORMATTED_OUTPUT="**Work Distribution Results** 📊\n\n"
+
+          FORMATTED_OUTPUT+="🛢️ **Tanks**:\n➜ $(jq -r '.Tanks | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🗑️ **Bin**:\n➜ $(jq -r '.Bin | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🚪 **Front**:\n➜ $(jq -r '.Front | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet A**:\n➜ $(jq -r '.["Toilet A"] | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🚻 **Toilet B**:\n➜ $(jq -r '.["Toilet B"] | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🏡 **Backyard**:\n➜ $(jq -r '.Backyard | join(", ")' output/output.txt)\n\n"
+          FORMATTED_OUTPUT+="🛋️ **Parlor**:\n➜ $(jq -r '.Parlor | join(", ")' output/output.txt)\n\n"
+
+          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Send to Discord using curl
         run: |
           curl -X POST -H "Content-Type: application/json" \
             -d @discord_payload.json \
             ${{ secrets.DISCORD_WEBHOOK }}
-
