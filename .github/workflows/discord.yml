@@ -20,14 +20,14 @@ jobs:
       - name: Download output artifact
         uses: actions/download-artifact@v4
         with:
-          name: work-distribution-output  # Make sure this matches the artifact name
+          name: work-distribution-output
           path: output
 
       - name: Check if output file exists
         run: |
           if [ ! -f output/output.txt ]; then
             echo "Error: output.txt not found! Skipping Discord notification."
-            exit 0  # Do not fail workflow if the file is missing
+            exit 0  # Skip without failing if the file is missing
           fi
 
       - name: Read and format output
