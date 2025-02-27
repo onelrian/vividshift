@@ -21,7 +21,6 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
-        id: cache
         with:
           path: |
             ~/.cargo/registry
@@ -38,17 +37,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Force Rebuild and Push Docker Image
+      - name: Build and Push Docker Image
         run: |
-          docker build --no-cache -t ghcr.io/${{ github.repository }}/my-image:latest .
+          docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
       - name: Run Docker Container and Save Output
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt || { echo "Error: Container execution failed!" && exit 1; }
+
+      - name: Debug Files in Workspace
+        run: ls -lah
 
       - name: Debug Output
-        run: cat output.txt
+        run: |
+          if [ ! -s output.txt ]; then
+            echo "Error: output.txt is missing or empty!"
+            exit 1
+          fi
+          cat output.txt
 
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
