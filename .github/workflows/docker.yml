@@ -1,10 +1,9 @@
 name: Run Docker Container
 
 on:
+  workflow_dispatch: 
   schedule:
-    # Run every two weeks
-    - cron: '0 0 */14 * *'
-  workflow_dispatch:
+    - cron: '0 0 */14 * *'  # This runs every two weeks at midnight UTC
 
 jobs:
   build-and-run:
