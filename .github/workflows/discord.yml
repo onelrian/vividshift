@@ -14,48 +14,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt update && sudo apt install -y jq
-
-      - name: Download output artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: work-distribution-output
-          path: output
-
-      - name: Check if output file exists
+      - name: Install GitHub CLI & jq
         run: |
-          if [ ! -f output/output.txt ]; then
-            echo "Error: output.txt not found! Skipping Discord notification."
-            exit 0  # Skip without failing if the file is missing
-          fi
-
-      - name: Read and format output
+          sudo apt update
+          sudo apt install -y gh jq
+      - name: Authenticate GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FORMATTED_OUTPUT="**📊 Work Distribution Results**\n\n"
-
-          # Format the output into Discord-friendly text
-          while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-            
-            case "$key" in
-              "Tanks") icon="🛢️";;
-              "Bin") icon="🗑️";;
-              "Front") icon="🚪";;
-              "Toilet A") icon="🚻";;
-              "Toilet B") icon="🚻";;
-              "Backyard") icon="🏡";;
-              "Parlor") icon="🛋️";;
-              *) icon="🔹";;
-            esac
-
-            FORMATTED_OUTPUT+="$icon **$key**: $value\n"
-          done < output/output.txt
-
-          # Save to JSON for curl
-          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
-
+          gh auth setup-git
+      - name: Download output artifact using GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download --name output --dir output
+      - name: Read and encode output file
+        run: |
+          OUTPUT=$(jq -Rs . < output/output.txt)
+          echo "{\"content\": $OUTPUT}" > discord_payload.json
       - name: Send to Discord using curl
         run: |
           curl -X POST -H "Content-Type: application/json" \
