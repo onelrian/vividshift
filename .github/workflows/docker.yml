@@ -45,25 +45,10 @@ jobs:
 
       - name: Run Docker container
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.json
 
-      - name: Check if output.txt exists
-        run: |
-          if [ ! -f output.txt ]; then
-            echo "Error: output.txt not found! Skipping artifact upload."
-            exit 0  # Do not fail workflow if the file is missing
-          fi
-
-      - name: Upload output artifact
+      - name: Upload output as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: output-artifact  # Use a clear name for the artifact
-          path: output.txt
-
-      - name: Send results to Discord
-        run: |
-          OUTPUT=$(cat output.txt)
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
-            ${{ secrets.DISCORD_WEBHOOK }}
+          name: output
+          path: output.json
