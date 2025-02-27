@@ -54,7 +54,8 @@ jobs:
           path: output.txt
 
       - name: Send results to Discord
-        uses: peaceiris/actions-discord@v1.0.0  # Use peaceiris action
+        uses: Ilshidur/action-discord@v1
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}  # Your Discord webhook URL
-          message: "Work distribution results: $(cat output.txt)"
+          args: "Work distribution results: $(cat output.txt)"
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
