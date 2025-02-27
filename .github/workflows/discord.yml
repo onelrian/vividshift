@@ -11,11 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download output artifact
-        uses: actions/download-artifact@v3  # Use v3 instead of v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub CLI
+        uses: cli/cli-action@v3
         with:
-          name: output
-          path: output
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download output artifact using GitHub CLI
+        run: |
+          gh run download --artifact output --dir output
 
       - name: Read output file
         id: read-output
