@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # This runs every two weeks at midnight UTC
+    - cron: '0 0 */14 * *'  # Runs every two weeks at midnight UTC
 
 jobs:
   build-and-run:
@@ -21,7 +21,6 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
-        id: cache
         with:
           path: |
             ~/.cargo/registry
@@ -43,20 +42,38 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/my-image:latest .
           docker push ghcr.io/${{ github.repository }}/my-image:latest
 
-      - name: Run Docker container
+      - name: Run Docker container and capture output
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt
+          docker run --rm ghcr.io/${{ github.repository }}/my-image:latest > output.txt || echo "Error: Docker run failed!" > output.txt
 
       - name: Upload output as artifact
         uses: actions/upload-artifact@v4
         with:
           name: output
           path: output.txt
+          retention-days: 7  # Prevents artifact expiration issues
+
+      - name: Install jq
+        run: sudo apt update && sudo apt install -y jq
 
       - name: Send results to Discord
         run: |
-          OUTPUT=$(cat output.txt)
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": \"Work distribution results: $OUTPUT\"}" \
+          # Check if output.txt exists and is not empty
+          if [ ! -s output.txt ]; then
+            echo "Error: output.txt is empty or missing!"
+            exit 1
+          fi
+
+          # Read and sanitize output
+          OUTPUT=$(cat output.txt | jq -R -s '.')
+
+          # Truncate if message exceeds Discord's 2000-character limit
+          MAX_LENGTH=1900
+          if [ ${#OUTPUT} -gt $MAX_LENGTH ]; then
+            OUTPUT="${OUTPUT:0:$MAX_LENGTH}... (truncated)"
+          fi
+
+          # Send message to Discord
+          curl -X POST -H "Content-Type: application/json" \
+            -d "{\"content\": \"📊 **Work Distribution Results**:\n$OUTPUT\"}" \
             ${{ secrets.DISCORD_WEBHOOK }}
