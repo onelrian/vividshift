@@ -28,5 +28,8 @@ WORKDIR /app
 # Copy the names.txt file
 COPY names.txt .
 
+# Ensure the binary has the correct permissions
+RUN chmod +x /usr/local/bin/work_distribution
+
 # Run the application
 CMD ["work_distribution"]
