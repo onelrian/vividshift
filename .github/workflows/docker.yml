@@ -54,7 +54,7 @@ jobs:
           path: output.txt
 
       - name: Send results to Discord
-        uses: Ilshidur/action-discord@latest  # Correct capitalization
+        uses: Ilshidur/action-discord@v1.2.0  # Specify a valid version here
         with:
           args: "Work distribution results: $(cat output.txt)"
         env:
