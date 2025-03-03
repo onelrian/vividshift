@@ -14,10 +14,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # Authenticate to GitHub Container Registry
+      - name: Set up Docker authentication
+        uses: docker/login-action@v2
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and Run Docker Container
         id: run_container
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
+          docker run --rm ghcr.io/onelrian/work-distributor/work-group-generator:latest > output.txt
           cat output.txt  # Debugging step
           base64 -w 0 output.txt > output_encoded.txt  # Encode as single line
 
