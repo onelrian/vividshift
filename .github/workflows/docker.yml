@@ -53,13 +53,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read and format output for Discord
+      - name: Debug WORK_OUTPUT
         run: |
+          echo "WORK_OUTPUT: ${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
           if [ -z "${{ needs.build-and-run.outputs.WORK_OUTPUT }}" ]; then
             echo "❌ Error: No output found! Skipping Discord notification."
             exit 0
           fi
 
+      - name: Read and format output for Discord
+        run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
           while IFS= read -r line; do
@@ -85,7 +88,13 @@ jobs:
           echo "$PAYLOAD" > discord_payload.json
 
       - name: Debug Discord Payload
-        run: cat discord_payload.json
+        run: |
+          if [ -f discord_payload.json ]; then
+            cat discord_payload.json
+          else
+            echo "⚠️ No discord_payload.json file found."
+            exit 1
+          fi
 
       - name: Send to Discord
         run: |
