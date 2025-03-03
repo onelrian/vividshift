@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * *'  # Runs every 14 days
+    - cron: '0 0 */14 * 3'  # Runs every other Wednesday at midnight UTC
 
 jobs:
   build-and-run:
@@ -92,27 +92,12 @@ jobs:
 
       - name: Read and Format Output for Discord
         run: |
-          # Initialize the formatted output with the header once
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
-          # Declare a simple variable to track groups that have been processed
-          PROCESSED_GROUPS=""
-          
-          # Loop through each line in formatted_output.txt
           while IFS= read -r line; do
-            # Extract key and value from each line
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
-            # Skip if the group has already been processed
-            if [[ "$PROCESSED_GROUPS" == *"$key"* ]]; then
-              continue
-            fi
-
-            # Mark the group as processed by adding to the processed groups list
-            PROCESSED_GROUPS="$PROCESSED_GROUPS $key"
-
-            # Assign icons based on the key
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -124,11 +109,9 @@ jobs:
               *) icon="🔹"; sub_icon="";;
             esac
 
-            # Append formatted line for each group
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < formatted_output.txt
 
-          # Create the final JSON payload for Discord
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
@@ -144,4 +127,3 @@ jobs:
           else
             echo "⚠️ No data to send to Discord."
           fi
-
