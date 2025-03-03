@@ -94,9 +94,9 @@ jobs:
         run: |
           # Initialize the formatted output with the header once
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-          
-          # Declare an associative array to keep track of processed groups
-          declare -A processed_groups
+
+          # Declare a simple variable to track groups that have been processed
+          PROCESSED_GROUPS=""
           
           # Loop through each line in formatted_output.txt
           while IFS= read -r line; do
@@ -105,12 +105,12 @@ jobs:
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
             # Skip if the group has already been processed
-            if [[ -n "${processed_groups[$key]}" ]]; then
+            if [[ "$PROCESSED_GROUPS" == *"$key"* ]]; then
               continue
             fi
 
-            # Mark the group as processed by adding to the associative array
-            processed_groups["$key"]=1
+            # Mark the group as processed by adding to the processed groups list
+            PROCESSED_GROUPS="$PROCESSED_GROUPS $key"
 
             # Assign icons based on the key
             case "$key" in
@@ -144,3 +144,4 @@ jobs:
           else
             echo "⚠️ No data to send to Discord."
           fi
+
