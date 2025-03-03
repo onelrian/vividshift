@@ -1,94 +1,48 @@
-name: Build and Deploy Docker Container
+name: Work Group Distribution
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 */14 * *'  # Runs every 14 days
 
 jobs:
-  build-and-run:
+  distribute-work:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Build Docker Image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
-
-      - name: Run Docker Container and collect output
+      - name: Build and Run Docker Container
         id: run_container
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          cat output.txt
-          base64 output.txt > output_encoded.txt
+          cat output.txt  # Debugging step
+          base64 -w 0 output.txt > output_encoded.txt  # Encode as single line
 
-      - name: Set workflow output
-        id: set_output
+      - name: Store Base64 Output in File
         run: |
-          echo "WORK_OUTPUT=$(cat output_encoded.txt)" >> $GITHUB_ENV
+          echo "WORK_OUTPUT_FILE=$(pwd)/output_encoded.txt" >> $GITHUB_ENV
 
-  send-to-discord:
-    needs: build-and-run
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Decode base64 output
+      - name: Decode and Format Output
         run: |
-          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
+          if [ -z "${{ env.WORK_OUTPUT_FILE }}" ]; then
             echo "❌ No output found! Skipping Discord notification."
             exit 1
           fi
 
-          echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
-          ls -lah formatted_output.txt  # Debugging step
+          cat "${{ env.WORK_OUTPUT_FILE }}" | base64 -d > formatted_output.txt
+          echo "🔍 Checking formatted_output.txt:"
           cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
 
-          if [ ! -s formatted_output.txt ]; then
-            echo "❌ Error: formatted_output.txt is empty! Exiting."
-            exit 1
-          fi
-
-      - name: Format output for Discord
+      - name: Generate Discord Message
         run: |
-          FORMATTED_OUTPUT=""
-          FIRST_LINE=true
+          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
-            # Ignore empty lines
-            if [ -z "$key" ] || [ -z "$value" ]; then
-              continue
-            fi
-
-            # Set header only once
-            if [ "$FIRST_LINE" = true ]; then
-              FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-              FIRST_LINE=false
-            fi
 
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
@@ -106,16 +60,13 @@ jobs:
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
-      - name: Debug Discord Payload
-        run: cat discord_payload.json
-
       - name: Send to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          if [ -s discord_payload.json ]; then
-            curl -X POST -H "Content-Type: application/json" \
-              --fail --silent --show-error \
-              -d @discord_payload.json \
-              ${{ secrets.DISCORD_WEBHOOK }}
-          else
-            echo "⚠️ No data to send to Discord."
+          if [ ! -s discord_payload.json ]; then
+            echo "❌ No data to send! Exiting."
+            exit 1
           fi
+          
+          curl -X POST -H "Content-Type: application/json" -d @discord_payload.json "$DISCORD_WEBHOOK"
