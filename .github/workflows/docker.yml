@@ -94,21 +94,22 @@ jobs:
         run: |
           # Initialize the formatted output with the header once
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-
-          # Declare an array to keep track of processed groups
+          
+          # Declare an associative array to keep track of processed groups
           declare -A processed_groups
-
+          
           # Loop through each line in formatted_output.txt
           while IFS= read -r line; do
+            # Extract key and value from each line
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
             # Skip if the group has already been processed
-            if [[ ${processed_groups["$key"]} ]]; then
+            if [[ -n "${processed_groups[$key]}" ]]; then
               continue
             fi
 
-            # Mark the group as processed
+            # Mark the group as processed by adding to the associative array
             processed_groups["$key"]=1
 
             # Assign icons based on the key
