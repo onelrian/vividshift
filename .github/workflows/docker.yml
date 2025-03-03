@@ -41,10 +41,9 @@ jobs:
           cat output.txt
 
       - name: Set workflow output
+        id: set_output
         run: |
-          echo "WORK_OUTPUT<<EOF" >> $GITHUB_ENV
-          cat output.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "WORK_OUTPUT=$(cat output.txt)" >> $GITHUB_OUTPUT
 
   send-to-discord:
     needs: build-and-run
@@ -56,7 +55,7 @@ jobs:
 
       - name: Read and format output for Discord
         run: |
-          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
+          if [ -z "${{ needs.build-and-run.outputs.WORK_OUTPUT }}" ]; then
             echo "❌ Error: No output found! Skipping Discord notification."
             exit 0
           fi
@@ -79,7 +78,7 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done <<< "${{ env.WORK_OUTPUT }}"
+          done <<< "${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
