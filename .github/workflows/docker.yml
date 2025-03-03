@@ -37,8 +37,9 @@ jobs:
       - name: Run Docker Container and collect output
         id: run_container
         run: |
+          # Running Docker container and saving the output to output.txt
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          cat output.txt
+          cat output.txt  # Debug the output content
 
       - name: Set workflow output
         id: set_output
@@ -63,12 +64,16 @@ jobs:
 
       - name: Read and format output for Discord
         run: |
+          # Start formatting
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
+          # Process each line of the WORK_OUTPUT
           while IFS= read -r line; do
+            # Parse the key-value pairs
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
+            # Map specific keys to Discord-friendly icons and text
             case "$key" in
               "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
