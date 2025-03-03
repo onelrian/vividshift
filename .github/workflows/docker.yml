@@ -37,7 +37,7 @@ jobs:
       - name: Run Docker Container and Capture Output
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-
+          
           echo "🔍 Checking output.txt:"
           ls -lah output.txt  # Debugging step
           cat output.txt || echo "⚠️ No content in output.txt"
@@ -49,14 +49,14 @@ jobs:
 
       - name: Encode Output for GitHub Actions
         run: |
-          WORK_OUTPUT=$(base64 -w0 < output.txt)
+          echo "ENCODED_OUTPUT=$(base64 -w0 < output.txt)" >> $GITHUB_ENV
 
-          if [ -z "$WORK_OUTPUT" ]; then
-            echo "❌ Error: No output generated after encoding!" >&2
-            exit 1
-          fi
-
-          echo "WORK_OUTPUT=$WORK_OUTPUT" >> $GITHUB_ENV
+      - name: Upload Output as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: work-output
+          path: output.txt
+          retention-days: 1
 
   send-to-discord:
     needs: build-and-run
@@ -66,14 +66,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download Output Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: work-output
+          path: .
+
       - name: Decode Output for Discord
         run: |
-          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
-            echo "❌ No output found! Skipping Discord notification."
+          if [ ! -f output.txt ] || [ ! -s output.txt ]; then
+            echo "❌ Error: output.txt is missing or empty! Exiting."
             exit 1
           fi
 
-          echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
+          cat output.txt > formatted_output.txt
 
           echo "🔍 Checking formatted_output.txt:"
           ls -lah formatted_output.txt  # Debugging step
