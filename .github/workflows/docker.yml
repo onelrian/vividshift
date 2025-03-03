@@ -63,11 +63,13 @@ jobs:
         run: |
           if [ -z "${{ env.WORK_OUTPUT }}" ]; then
             echo "❌ No output found! Skipping Discord notification."
-            exit 0
+            exit 1
           fi
 
+          # Decode base64-encoded output to file
           echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
-          cat formatted_output.txt
+          ls -lah formatted_output.txt  # Debugging step to verify file exists
+          cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
 
       - name: Format Output for Discord
         run: |
