@@ -34,29 +34,17 @@ jobs:
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-      - name: Run Docker Container and Capture Output
+      - name: Run Docker Container and collect output
+        id: run_container
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          
-          echo "🔍 Checking output.txt:"
-          ls -lah output.txt  # Debugging step
-          cat output.txt || echo "⚠️ No content in output.txt"
+          cat output.txt
+          base64 output.txt > output_encoded.txt
 
-          if [ ! -s output.txt ]; then
-            echo "❌ Error: output.txt is empty! Exiting."
-            exit 1
-          fi
-
-      - name: Encode Output for GitHub Actions
+      - name: Set workflow output
+        id: set_output
         run: |
-          echo "ENCODED_OUTPUT=$(base64 -w0 < output.txt)" >> $GITHUB_ENV
-
-      - name: Upload Output as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: work-output
-          path: output.txt
-          retention-days: 1
+          echo "WORK_OUTPUT=$(cat output_encoded.txt)" >> $GITHUB_ENV
 
   send-to-discord:
     needs: build-and-run
@@ -66,22 +54,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Output Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: work-output
-          path: .
-
-      - name: Decode Output for Discord
+      - name: Decode base64 output
         run: |
-          if [ ! -f output.txt ] || [ ! -s output.txt ]; then
-            echo "❌ Error: output.txt is missing or empty! Exiting."
+          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
+            echo "❌ No output found! Skipping Discord notification."
             exit 1
           fi
 
-          cat output.txt > formatted_output.txt
-
-          echo "🔍 Checking formatted_output.txt:"
+          echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
           ls -lah formatted_output.txt  # Debugging step
           cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
 
@@ -90,13 +70,25 @@ jobs:
             exit 1
           fi
 
-      - name: Read and Format Output for Discord
+      - name: Format output for Discord
         run: |
-          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
+          FORMATTED_OUTPUT=""
+          FIRST_LINE=true
 
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
+
+            # Ignore empty lines
+            if [ -z "$key" ] || [ -z "$value" ]; then
+              continue
+            fi
+
+            # Set header only once
+            if [ "$FIRST_LINE" = true ]; then
+              FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
+              FIRST_LINE=false
+            fi
 
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
