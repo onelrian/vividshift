@@ -1,61 +1,85 @@
-name: Work Group Distribution
+name: Build and Deploy Docker Container
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 */14 * *'  # Runs every 14 days
 
 jobs:
-  distribute-work:
+  build-and-run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Authenticate to GitHub Container Registry
-      - name: Set up Docker authentication for GitHub Container Registry
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
 
-      - name: Build and Run Docker Container
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ghcr.io/onelrian/work-distributor/work-group-generator:latest .
+
+      - name: Push Docker Image
+        run: |
+          docker push ghcr.io/onelrian/work-distributor/work-group-generator:latest
+
+      - name: Run Docker Container and collect output
         id: run_container
         run: |
           docker run --rm ghcr.io/onelrian/work-distributor/work-group-generator:latest > output.txt
-          cat output.txt  # Debugging step
-          base64 -w 0 output.txt > output_encoded.txt  # Encode as single line
+          cat output.txt
 
-      - name: Store Base64 Output in File
+      - name: Set workflow output
+        id: set_output
         run: |
-          echo "WORK_OUTPUT_FILE=$(pwd)/output_encoded.txt" >> $GITHUB_ENV
+          echo "WORK_OUTPUT=$(cat output.txt)" >> $GITHUB_OUTPUT
 
-      - name: Decode and Format Output
+  send-to-discord:
+    needs: build-and-run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read and format output for Discord
         run: |
-          if [ -z "${{ env.WORK_OUTPUT_FILE }}" ]; then
-            echo "❌ No output found! Skipping Discord notification."
-            exit 1
+          if [ -z "${{ needs.build-and-run.outputs.WORK_OUTPUT }}" ]; then
+            echo "❌ Error: No output found! Skipping Discord notification."
+            exit 0
           fi
 
-          cat "${{ env.WORK_OUTPUT_FILE }}" | base64 -d > formatted_output.txt
-          echo "🔍 Checking formatted_output.txt:"
-          cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
-
-      - name: Generate Discord Message
-        run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
+            
             case "$key" in
-              "Tank") icon="🛢️"; sub_icon="💧";;
+              "Tanks") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
-              "Frontyard") icon="🚪"; sub_icon="🛠️";;
+              "Front") icon="🚪"; sub_icon="🛠️";;
               "Toilet A") icon="🚻"; sub_icon="🧽";;
               "Toilet B") icon="🚻"; sub_icon="🧼";;
               "Backyard") icon="🏡"; sub_icon="🌿";;
@@ -64,17 +88,20 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done < formatted_output.txt
+          done <<< "${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
+      - name: Debug Discord Payload
+        run: cat discord_payload.json
+
       - name: Send to Discord
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          if [ ! -s discord_payload.json ]; then
-            echo "❌ No data to send! Exiting."
-            exit 1
+          if [ -s discord_payload.json ]; then
+            curl -X POST -H "Content-Type: application/json" \
+              --fail --silent --show-error \
+              -d @discord_payload.json \
+              ${{ secrets.DISCORD_WEBHOOK }}
+          else
+            echo "⚠️ No data to send to Discord."
           fi
-          
-          curl -X POST -H "Content-Type: application/json" -d @discord_payload.json "$DISCORD_WEBHOOK"
