@@ -34,17 +34,22 @@ jobs:
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-      - name: Run Docker Container and collect output
+      - name: Run Docker Container and Collect Output
         id: run_container
         run: |
-          # Running Docker container and saving the output to output.txt
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          cat output.txt  # Debug the output content
+          cat output.txt || echo "⚠️ No output.txt file found!"
 
-      - name: Set workflow output
+      - name: Set Workflow Output (Base64 Encoding Fix)
         id: set_output
         run: |
-          echo "WORK_OUTPUT=$(cat output.txt)" >> $GITHUB_OUTPUT
+          if [ -s output.txt ]; then
+            WORK_OUTPUT=$(base64 -w0 output.txt)
+            echo "WORK_OUTPUT=$WORK_OUTPUT" >> $GITHUB_ENV
+          else
+            echo "❌ Error: No output generated!" >&2
+            exit 1
+          fi
 
   send-to-discord:
     needs: build-and-run
@@ -54,30 +59,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug WORK_OUTPUT
+      - name: Decode Output for Discord
         run: |
-          echo "WORK_OUTPUT: ${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
-          if [ -z "${{ needs.build-and-run.outputs.WORK_OUTPUT }}" ]; then
-            echo "❌ Error: No output found! Skipping Discord notification."
+          if [ -z "${{ env.WORK_OUTPUT }}" ]; then
+            echo "❌ No output found! Skipping Discord notification."
             exit 0
           fi
 
-      - name: Read and format output for Discord
+          echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
+          cat formatted_output.txt
+
+      - name: Format Output for Discord
         run: |
-          # Start formatting
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
-          # Process each line of the WORK_OUTPUT
           while IFS= read -r line; do
-            # Parse the key-value pairs
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
-            # Map specific keys to Discord-friendly icons and text
             case "$key" in
-              "Tanks") icon="🛢️"; sub_icon="💧";;
+              "Tank") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
-              "Front") icon="🚪"; sub_icon="🛠️";;
+              "Frontyard") icon="🚪"; sub_icon="🛠️";;
               "Toilet A") icon="🚻"; sub_icon="🧽";;
               "Toilet B") icon="🚻"; sub_icon="🧼";;
               "Backyard") icon="🏡"; sub_icon="🌿";;
@@ -86,20 +89,12 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done <<< "${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
+          done < formatted_output.txt
 
-          # Use jq to safely format the payload
-          PAYLOAD=$(jq -n --arg content "$FORMATTED_OUTPUT" '{content: $content}')
-          echo "$PAYLOAD" > discord_payload.json
+          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
-        run: |
-          if [ -f discord_payload.json ]; then
-            cat discord_payload.json
-          else
-            echo "⚠️ No discord_payload.json file found."
-            exit 1
-          fi
+        run: cat discord_payload.json
 
       - name: Send to Discord
         run: |
