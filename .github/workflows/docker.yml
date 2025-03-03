@@ -34,22 +34,29 @@ jobs:
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-      - name: Run Docker Container and Collect Output
+      - name: Run Docker Container and Capture Output
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
+
           echo "🔍 Checking output.txt:"
-          ls -lah output.txt  # Check if file exists
+          ls -lah output.txt  # Debugging step
           cat output.txt || echo "⚠️ No content in output.txt"
 
-      - name: Set Workflow Output (Base64 Encoding Fix)
-        run: |
-          if [ -s output.txt ]; then
-            WORK_OUTPUT=$(base64 -w0 output.txt)
-            echo "WORK_OUTPUT=$WORK_OUTPUT" >> $GITHUB_ENV
-          else
-            echo "❌ Error: No output generated!" >&2
+          if [ ! -s output.txt ]; then
+            echo "❌ Error: output.txt is empty! Exiting."
             exit 1
           fi
+
+      - name: Encode Output for GitHub Actions
+        run: |
+          WORK_OUTPUT=$(base64 -w0 < output.txt)
+
+          if [ -z "$WORK_OUTPUT" ]; then
+            echo "❌ Error: No output generated after encoding!" >&2
+            exit 1
+          fi
+
+          echo "WORK_OUTPUT=$WORK_OUTPUT" >> $GITHUB_ENV
 
   send-to-discord:
     needs: build-and-run
@@ -67,8 +74,15 @@ jobs:
           fi
 
           echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
+
+          echo "🔍 Checking formatted_output.txt:"
           ls -lah formatted_output.txt  # Debugging step
           cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
+
+          if [ ! -s formatted_output.txt ]; then
+            echo "❌ Error: formatted_output.txt is empty! Exiting."
+            exit 1
+          fi
 
       - name: Read and Format Output for Discord
         run: |
