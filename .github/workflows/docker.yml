@@ -92,12 +92,15 @@ jobs:
 
       - name: Read and Format Output for Discord
         run: |
+          # Initialize the formatted output with the header once
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
+          # Loop through each line in formatted_output.txt
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
 
+            # Assign icons based on the key
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -109,9 +112,11 @@ jobs:
               *) icon="🔹"; sub_icon="";;
             esac
 
+            # Append formatted line for each group
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < formatted_output.txt
 
+          # Create the final JSON payload for Discord
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
