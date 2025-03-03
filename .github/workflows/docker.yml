@@ -35,13 +35,13 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
       - name: Run Docker Container and Collect Output
-        id: run_container
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          cat output.txt || echo "⚠️ No output.txt file found!"
+          echo "🔍 Checking output.txt:"
+          ls -lah output.txt  # Check if file exists
+          cat output.txt || echo "⚠️ No content in output.txt"
 
       - name: Set Workflow Output (Base64 Encoding Fix)
-        id: set_output
         run: |
           if [ -s output.txt ]; then
             WORK_OUTPUT=$(base64 -w0 output.txt)
@@ -66,12 +66,11 @@ jobs:
             exit 1
           fi
 
-          # Decode base64-encoded output to file
           echo "${{ env.WORK_OUTPUT }}" | base64 -d > formatted_output.txt
-          ls -lah formatted_output.txt  # Debugging step to verify file exists
+          ls -lah formatted_output.txt  # Debugging step
           cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
 
-      - name: Format Output for Discord
+      - name: Read and Format Output for Discord
         run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
 
