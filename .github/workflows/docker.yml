@@ -30,28 +30,33 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Use Docker Hub username secret
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Use Docker password secret
-          ecr: auto
-          logout: true
-
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
-      - name: Run Docker Container and collect output
-        id: run_container
+      - name: Run Docker Container and Capture Output
         run: |
           docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          cat output.txt
+          
+          echo "🔍 Checking output.txt:"
+          ls -lah output.txt  # Debugging step
+          cat output.txt || echo "⚠️ No content in output.txt"
 
-      - name: Set workflow output
-        id: set_output
+          if [ ! -s output.txt ]; then
+            echo "❌ Error: output.txt is empty! Exiting."
+            exit 1
+          fi
+
+      - name: Encode Output for GitHub Actions
         run: |
-          echo "WORK_OUTPUT=$(cat output.txt)" >> $GITHUB_OUTPUT
+          echo "ENCODED_OUTPUT=$(base64 -w0 < output.txt)" >> $GITHUB_ENV
+
+      - name: Upload Output as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: work-output
+          path: output.txt
+          retention-days: 1
 
   send-to-discord:
     needs: build-and-run
@@ -61,20 +66,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read and format output for Discord
+      - name: Download Output Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: work-output
+          path: .
+
+      - name: Decode Output for Discord
         run: |
-          if [ -z "${{ needs.build-and-run.outputs.WORK_OUTPUT }}" ]; then
-            echo "❌ Error: No output found! Skipping Discord notification."
-            exit 0
+          if [ ! -f output.txt ] || [ ! -s output.txt ]; then
+            echo "❌ Error: output.txt is missing or empty! Exiting."
+            exit 1
           fi
 
+          cat output.txt > formatted_output.txt
+
+          echo "🔍 Checking formatted_output.txt:"
+          ls -lah formatted_output.txt  # Debugging step
+          cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
+
+          if [ ! -s formatted_output.txt ]; then
+            echo "❌ Error: formatted_output.txt is empty! Exiting."
+            exit 1
+          fi
+
+      - name: Read and Format Output for Discord
+        run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
+
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F': ' '{print $1}')
             value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-            
+
             case "$key" in
-              "Tanks") icon="🛢️"; sub_icon="💧";;
+              "Tank") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
               "Frontyard") icon="🚪"; sub_icon="🛠️";;
               "Toilet A") icon="🚻"; sub_icon="🧽";;
@@ -85,9 +110,12 @@ jobs:
             esac
 
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done <<< "${{ needs.build-and-run.outputs.WORK_OUTPUT }}"
+          done < formatted_output.txt
 
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
+
+      - name: Debug Discord Payload
+        run: cat discord_payload.json
 
       - name: Send to Discord
         run: |
