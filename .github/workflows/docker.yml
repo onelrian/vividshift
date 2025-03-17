@@ -6,8 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 0 */14 * 3'  # Runs every other Wednesday at midnight UTC
-
+    - cron: '0 10 */14 * 0'  # Runs every 2 weeks on Sunday at 10 AM UTC
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
