@@ -5,9 +5,10 @@ mod output;
 use group::distribute_work;
 use files::read_names_from_file;
 use output::print_assignments;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 fn main() {
-    // Read names from file A and file B
     let names_a = match read_names_from_file("file_a.txt") {
         Ok(names) => names,
         Err(e) => {
@@ -24,9 +25,8 @@ fn main() {
         }
     };
 
-    // Distribute the work among the people
-    let assignments = distribute_work(names_a, names_b);
+    let mut prev_assignments: HashMap<&str, HashSet<String>> = HashMap::new();
+    let assignments = distribute_work(names_a, names_b, &mut prev_assignments);
 
-    // Print the assignments in the desired format
     print_assignments(assignments);
 }
