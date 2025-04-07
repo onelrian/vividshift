@@ -1,0 +1,18 @@
+Usher:Toilet B
+Richmond:Parlor
+Mark:Bin
+Frank:Parlor
+Christian:Backyard
+Romeo:Toilet B
+Onel:Parlor
+Maxwell:Tank
+Ghislain:Frontyard
+Michael:Toilet B
+Desmond:Frontyard
+Prosper:Tank
+Emmanuel:Toilet B
+Severian:Toilet A
+Vitalis:Frontyard
+Derick:Toilet A
+Nathan:Parlor
+Junine:Parlor

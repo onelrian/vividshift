@@ -6,3 +6,4 @@ pub fn print_assignments(assignments: HashMap<&str, Vec<String>>) {
         println!("**{}**: {}", domain, names.join(", "));
     }
 }
+
