@@ -35,22 +35,26 @@ jobs:
         id: work_distributor
         run: |
           output=$(cargo run)
-          # Use the standard method for passing multi-line strings
           echo "DISTRIBUTION_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           echo "${output}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send notification to Discord
-        # --- FINAL FIX: Using the simpler 'message' parameter to ensure content is always sent ---
+        # --- FINAL FIX: Using the popular and verified appleboy/discord-action ---
         uses: appleboy/discord-action@master
         with:
           webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
           webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
-          message: |
-            Hello everyone! Here is the new work distribution for the next two weeks.
-            ${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}
+          # The message is constructed using embeds for better formatting
+          embeds: |
+            [{
+              "title": "📊 Work Distribution Results",
+              "description": "${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}",
+              "color": "3447003"
+            }]
 
       - name: Commit updated assignment history
+        # This step will only run on scheduled and manual runs, not on pull requests.
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           git config --global user.name 'GitHub Actions Bot'
