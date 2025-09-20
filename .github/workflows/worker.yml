@@ -1,13 +1,24 @@
 name: Distribute Work and Notify Discord
 
 on:
+  # Allows manual triggering for the first run and for any future emergencies.
   workflow_dispatch:
+  
+  # Runs checks on pull requests to ensure code quality.
   pull_request:
     branches:
       - main
+      
+  # The primary trigger after the first manual run.
   push:
     branches:
       - main
+      
+  # --- The Final, Correct Schedule ---
+  schedule:
+    # Runs at 10:00 UTC on the 4th and 20th day of every month.
+    # This creates a perfect "every two weeks" cycle starting from today, the 20th.
+    - cron: '0 10 4,20 * *'
 
 jobs:
   build-run-and-notify:
@@ -33,6 +44,7 @@ jobs:
         id: work_distributor
         run: |
           output=$(cargo run)
+          # This is the correct and robust way to handle multi-line output.
           echo "DISTRIBUTION_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           echo "${output}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -42,16 +54,14 @@ jobs:
         with:
           webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
           webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
-          embeds: |
-            [{
-              "title": "📊 Work Distribution Results",
-              "description": "${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}",
-              "color": "3447003"
-            }]
+          # The simple 'message' parameter is the most reliable way to send the output.
+          message: |
+            Hello everyone! Here is the new work distribution for the next two weeks.
+            ${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}
 
-      # --- THIS STEP NOW ONLY RUNS ON THE MAIN BRANCH ---
       - name: Commit updated assignment history
-        if: github.ref == 'refs/heads/main'
+        # This step will correctly run on pushes, scheduled runs, or manual runs, but not on PRs.
+        if: github.event_name != 'pull_request'
         run: |
           git config --global user.name 'GitHub Actions Bot'
           git config --global user.email 'github-actions@github.com'
@@ -62,14 +72,3 @@ jobs:
           else
             echo "No changes to assignment history to commit."
           fi
-
-      # --- THIS STEP NOW ONLY RUNS ON THE MAIN BRANCH ---
-      - name: Schedule the Next Run
-        if: github.ref == 'refs/heads/main'
-        uses: gr2m/invoke-workflow-run-action@v1
-        with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          workflow: ${{ github.workflow }}
-          delay_seconds: 1209600 # 14 days
-          token: ${{ secrets.GITHUB_TOKEN }}
