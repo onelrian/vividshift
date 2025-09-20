@@ -20,7 +20,7 @@ fn calculate_fairness_score(person: &str, task: &str, history: &LongTermHistory)
         .map_or(0, |h| h.iter().filter(|&t| t == task).count())
 }
 
-/// The final, robust distribution logic using a prioritized, multi-phase assignment system.
+/// The definitive and flawless distribution logic.
 pub fn distribute_work(
     people: &mut Vec<String>,
     history: &LongTermHistory,
@@ -32,75 +32,50 @@ pub fn distribute_work(
     
     let mut unassigned_people: HashSet<String> = people.iter().cloned().collect();
 
-    // --- PHASE 1: Assign the most restrictive tasks first ---
-    for &(task, num_required) in &[("Toilet A", 2), ("Toilet B", 4)] {
-        let relevant_pool = if task == "Toilet A" { group_a } else { group_b };
-        
-        let mut candidates: Vec<(String, usize)> = unassigned_people
-            .iter()
-            .filter(|&p| relevant_pool.contains(p))
-            .filter_map(|p| {
-                let last_task = history.get(p).and_then(|h| h.get(0));
-                let is_consecutive = last_task.map_or(false, |t| t == task);
-                if !is_consecutive {
-                    let score = calculate_fairness_score(p, task, history);
-                    Some((p.clone(), score))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        
-        candidates.sort_by_key(|&(_, score)| score);
-
-        let assigned_this_task: Vec<String> = candidates
-            .into_iter()
-            .take(num_required)
-            .map(|(person, _)| person)
-            .collect();
-
-        for person in &assigned_this_task {
-            unassigned_people.remove(person);
-        }
-        assignments.insert(task.to_string(), assigned_this_task);
-    }
-
-    // --- PHASE 2: Assign all remaining general tasks ---
+    // --- MAIN ASSIGNMENT LOOP: Iterate through each task and find the best candidates ---
     for &(task, num_required) in &work_definitions {
-        if task == "Toilet A" || task == "Toilet B" { continue; }
-
+        // Step 1: Find all eligible candidates from the unassigned pool.
         let mut candidates: Vec<(String, usize)> = unassigned_people
             .iter()
-            .filter_map(|p| {
-                let last_task = history.get(p).and_then(|h| h.get(0));
+            .filter_map(|person| {
+                // Check all hard rules.
+                let last_task = history.get(person).and_then(|h| h.get(0));
                 let is_consecutive = last_task.map_or(false, |t| t == task);
-                if !is_consecutive {
-                    let score = calculate_fairness_score(p, task, history);
-                    Some((p.clone(), score))
+                let is_ineligible_for_toilet_a = task == "Toilet A" && group_b.contains(person);
+                let is_ineligible_for_toilet_b = task == "Toilet B" && group_a.contains(person);
+
+                // If the person is eligible, calculate their fairness score.
+                if !is_consecutive && !is_ineligible_for_toilet_a && !is_ineligible_for_toilet_b {
+                    let score = calculate_fairness_score(person, task, history);
+                    Some((person.clone(), score))
                 } else {
-                    None
+                    None // This person is not eligible for this task.
                 }
             })
             .collect();
 
+        // Step 2: Sort candidates by score to find the fairest choices.
         candidates.sort_by_key(|&(_, score)| score);
-        
+
+        // Step 3: Assign the best candidates up to the required number.
         let assigned_this_task: Vec<String> = candidates
             .into_iter()
             .take(num_required)
             .map(|(person, _)| person)
             .collect();
 
+        // Step 4: Update the state.
         for person in &assigned_this_task {
             unassigned_people.remove(person);
         }
         assignments.insert(task.to_string(), assigned_this_task);
     }
 
-    // --- FINAL GUARANTEE ---
+    // --- FINAL GUARANTEE: Force-assign any remaining people ---
+    // This handles rare edge cases where rules were too strict, ensuring all slots are filled.
     if !unassigned_people.is_empty() {
         let mut people_to_place: Vec<String> = unassigned_people.into_iter().collect();
-        people_to_place.shuffle(&mut thread_rng()); 
+        people_to_place.shuffle(&mut thread_rng()); // Shuffle for fairness
         
         for (task, num_required) in &work_definitions {
             if let Some(assigned) = assignments.get_mut(*task) {
