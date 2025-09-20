@@ -19,7 +19,11 @@ fn main() {
 
     let group_a_set: HashSet<String> = names_a.iter().cloned().collect();
     let group_b_set: HashSet<String> = names_b.iter().cloned().collect();
-    eprintln!("✅ Loaded Group A ({} people) and Group B ({} people).", group_a_set.len(), group_b_set.len());
+    eprintln!(
+        "✅ Loaded Group A ({} people) and Group B ({} people).",
+        group_a_set.len(),
+        group_b_set.len()
+    );
 
     let mut all_names = names_a.clone();
     all_names.append(&mut names_b);
@@ -32,11 +36,14 @@ fn main() {
     });
     eprintln!("✅ Read long-term history for {} people.", history.len());
 
-    let new_assignments = group::distribute_work(&mut all_names, &history, &group_a_set, &group_b_set);
+    let new_assignments =
+        group::distribute_work(&mut all_names, &history, &group_a_set, &group_b_set);
     eprintln!("✅ Generated new work assignments with rotation logic.");
 
     let final_output = output::format_assignments(&new_assignments);
-    print!("{}", final_output);
+
+    // 🚨 FIX: use eprintln! so Drone Discord Plugin picks it up
+    eprintln!("{}", final_output);
 
     // --- Update the history for the next run ---
     for (task, people) in &new_assignments {
@@ -46,13 +53,13 @@ fn main() {
             person_history.truncate(5); // Keep only the last 5 assignments.
         }
     }
-    
+
     // --- Write to the new JSON history file ---
     if let Err(e) = files::write_long_term_history("long_term_history.json", &history) {
         eprintln!("Error writing long-term history: {}", e);
         process::exit(1);
     }
-    
+
     eprintln!("\n✅ Successfully updated long_term_history.json for the next cycle.");
     eprintln!("--- Work Distribution Complete ---");
 }
