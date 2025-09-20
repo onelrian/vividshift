@@ -36,24 +36,21 @@ jobs:
         id: work_distributor
         run: |
           output=$(cargo run)
-          # This method is designed to correctly handle multi-line strings for embeds.
+          # This is the correct method for passing multi-line output to the next step.
           echo "DISTRIBUTION_OUTPUT<<EOF" >> $GITHUB_OUTPUT
           echo "${output}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # --- THIS IS THE FIX FOR THE FORMATTING ---
+      # --- THIS IS THE FINAL FIX FOR THE MESSAGE FORMATTING ---
       - name: Send notification to Discord
         uses: appleboy/discord-action@master
         with:
           webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
           webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
-          # The 'embeds' format provides clean, structured, and beautiful output.
-          embeds: |
-            [{
-              "title": "📊 Work Distribution Results",
-              "description": "${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}",
-              "color": "3447003"
-            }]
+          # The 'message' parameter is robust and handles multi-line text perfectly.
+          message: |
+            Hello everyone! Here is the new work distribution for the next two weeks.
+            ${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}
 
       - name: Commit updated assignment history
         if: github.event_name != 'pull_request'
