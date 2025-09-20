@@ -1,128 +1,128 @@
 {
-  "Usher": [
+  "Michael": [
     "Toilet B",
     "Frontyard",
+    "Parlor",
     "Toilet B",
-    "Tank",
-    "Parlor"
+    "Tank"
   ],
-  "Romeo": [
-    "Bin",
+  "Christian": [
+    "Toilet B",
     "Parlor",
     "Toilet B",
     "Parlor",
     "Toilet B"
   ],
   "Frank": [
+    "Frontyard",
     "Parlor",
     "Toilet A",
     "Tank",
-    "Bin",
+    "Bin"
+  ],
+  "Derick": [
+    "Tank",
+    "Parlor",
+    "Backyard",
+    "Frontyard",
     "Toilet A"
   ],
-  "Nathan": [
-    "Tank",
+  "Severian": [
     "Frontyard",
     "Parlor",
-    "Frontyard",
-    "Parlor"
+    "Toilet A",
+    "Parlor",
+    "Toilet A"
   ],
   "Junine": [
+    "Backyard",
     "Parlor",
     "Frontyard",
     "Toilet A",
-    "Parlor",
-    "Tank"
-  ],
-  "Michael": [
-    "Frontyard",
-    "Parlor",
-    "Toilet B",
-    "Tank",
     "Parlor"
   ],
+  "Nathan": [
+    "Toilet A",
+    "Tank",
+    "Frontyard",
+    "Parlor",
+    "Frontyard"
+  ],
   "Mark": [
+    "Parlor",
     "Toilet B",
     "Parlor",
     "Toilet B",
-    "Frontyard",
-    "Toilet B"
+    "Frontyard"
   ],
-  "Ghislain": [
+  "Maxwell": [
+    "Bin",
+    "Toilet A",
+    "Tank",
     "Frontyard",
-    "Toilet B",
-    "Backyard",
-    "Toilet B",
     "Parlor"
   ],
   "Desmond": [
+    "Parlor",
     "Backyard",
     "Toilet B",
     "Parlor",
-    "Toilet B",
-    "Frontyard"
-  ],
-  "Derick": [
-    "Parlor",
-    "Backyard",
-    "Frontyard",
-    "Toilet A",
-    "Parlor"
+    "Toilet B"
   ],
   "Richmond": [
+    "Parlor",
     "Toilet B",
     "Bin",
     "Tank",
-    "Frontyard",
-    "Toilet B"
+    "Frontyard"
   ],
-  "Prosper": [
-    "Toilet A",
-    "Tank",
-    "Frontyard",
-    "Backyard",
-    "Toilet A"
-  ],
-  "Christian": [
+  "Usher": [
     "Parlor",
     "Toilet B",
-    "Parlor",
+    "Frontyard",
     "Toilet B",
     "Tank"
   ],
-  "Maxwell": [
+  "Romeo": [
+    "Frontyard",
+    "Bin",
+    "Parlor",
+    "Toilet B",
+    "Parlor"
+  ],
+  "Ghislain": [
+    "Toilet B",
+    "Frontyard",
+    "Toilet B",
+    "Backyard",
+    "Toilet B"
+  ],
+  "Prosper": [
+    "Parlor",
     "Toilet A",
     "Tank",
     "Frontyard",
-    "Parlor",
-    "Frontyard"
+    "Backyard"
   ],
-  "Emmanuel": [
-    "Tank",
-    "Toilet B",
+  "Onel": [
+    "Toilet A",
+    "Frontyard",
     "Parlor",
-    "Toilet B",
-    "Frontyard"
+    "Toilet A",
+    "Parlor"
   ],
   "Vitalis": [
+    "Tank",
     "Toilet B",
     "Parlor",
     "Bin",
+    "Parlor"
+  ],
+  "Emmanuel": [
+    "Toilet B",
+    "Tank",
+    "Toilet B",
     "Parlor",
     "Toilet B"
-  ],
-  "Onel": [
-    "Frontyard",
-    "Parlor",
-    "Toilet A",
-    "Parlor",
-    "Bin"
-  ],
-  "Severian": [
-    "Parlor",
-    "Toilet A",
-    "Parlor",
-    "Toilet A",
-    "Backyard"
   ]
 }
