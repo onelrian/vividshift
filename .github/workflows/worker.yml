@@ -32,29 +32,25 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run Work Distributor and Format Output
+      - name: Run Work Distributor
         id: work_distributor
         run: |
           output=$(cargo run)
-          # --- THIS IS THE CRITICAL FIX FOR FORMATTING ---
-          # Escape newlines so the output can be safely injected into a JSON string.
-          escaped_output="${output//'%'/'%25'}"
-          escaped_output="${escaped_output//$'\n'/'\n'}"
-          escaped_output="${escaped_output//$'\r'/'\r'}"
-          echo "DISTRIBUTION_OUTPUT=${escaped_output}" >> $GITHUB_OUTPUT
+          # This is the correct and robust way to handle multi-line output.
+          echo "DISTRIBUTION_OUTPUT<<EOF" >> $GITHUB_OUTPUT
+          echo "${output}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
+      # --- THIS IS THE FIX FOR THE EMPTY DISCORD MESSAGE ---
       - name: Send notification to Discord
         uses: appleboy/discord-action@master
         with:
           webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
           webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
-          # The 'embeds' format provides clean, professional output.
-          embeds: |
-            [{
-              "title": "📊 Work Distribution Results",
-              "description": "${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}",
-              "color": "3447003"
-            }]
+          # The simple 'message' parameter is robust and handles multi-line text perfectly.
+          message: |
+            Hello everyone! Here is the new work distribution for the next two weeks.
+            ${{ steps.work_distributor.outputs.DISTRIBUTION_OUTPUT }}
 
       - name: Commit updated assignment history
         if: github.event_name != 'pull_request'
