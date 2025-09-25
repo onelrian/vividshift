@@ -1,76 +1,76 @@
 {
   "assignments": {
-    "Desmond": [
-      "Tank",
-      "Parlor"
-    ],
-    "Prosper": [
-      "Parlor",
-      "Tank"
-    ],
-    "Frank": [
-      "Parlor",
-      "Toilet A"
-    ],
-    "Maxwell": [
-      "Frontyard",
-      "Parlor"
-    ],
-    "Richmond": [
-      "Frontyard",
-      "Toilet B"
-    ],
-    "Mark": [
-      "Toilet B",
-      "Parlor"
-    ],
-    "Onel": [
-      "Parlor",
-      "Toilet A"
-    ],
-    "Nathan": [
-      "Toilet A",
-      "Frontyard"
-    ],
     "Junine": [
-      "Bin",
-      "Parlor"
-    ],
-    "Christian": [
-      "Parlor",
-      "Toilet B"
-    ],
-    "Ghislain": [
       "Tank",
-      "Toilet B"
-    ],
-    "Michael": [
-      "Backyard",
-      "Parlor"
-    ],
-    "Emmanuel": [
-      "Toilet B",
       "Bin"
     ],
     "Vitalis": [
-      "Toilet B",
-      "Frontyard"
-    ],
-    "Usher": [
-      "Toilet B",
-      "Frontyard"
-    ],
-    "Derick": [
-      "Frontyard",
-      "Tank"
-    ],
-    "Severian": [
-      "Toilet A",
-      "Backyard"
-    ],
-    "Romeo": [
       "Parlor",
       "Toilet B"
+    ],
+    "Michael": [
+      "Frontyard",
+      "Backyard"
+    ],
+    "Severian": [
+      "Parlor",
+      "Toilet A"
+    ],
+    "Frank": [
+      "Bin",
+      "Parlor"
+    ],
+    "Derick": [
+      "Toilet A",
+      "Frontyard"
+    ],
+    "Emmanuel": [
+      "Parlor",
+      "Toilet B"
+    ],
+    "Richmond": [
+      "Toilet B",
+      "Frontyard"
+    ],
+    "Mark": [
+      "Frontyard",
+      "Toilet B"
+    ],
+    "Onel": [
+      "Backyard",
+      "Parlor"
+    ],
+    "Prosper": [
+      "Frontyard",
+      "Parlor"
+    ],
+    "Christian": [
+      "Tank",
+      "Parlor"
+    ],
+    "Ghislain": [
+      "Toilet B",
+      "Tank"
+    ],
+    "Usher": [
+      "Parlor",
+      "Toilet B"
+    ],
+    "Romeo": [
+      "Toilet B",
+      "Parlor"
+    ],
+    "Maxwell": [
+      "Toilet A",
+      "Frontyard"
+    ],
+    "Nathan": [
+      "Parlor",
+      "Toilet A"
+    ],
+    "Desmond": [
+      "Toilet B",
+      "Tank"
     ]
   }
 }
