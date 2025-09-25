@@ -84,46 +84,34 @@ jobs:
             echo "❌ Error: output.txt is missing or empty! Exiting."
             exit 1
           fi
-          # We only need the lines with the actual assignments for the message
+          # Filter for only the assignment lines
           grep '➡️' output.txt > formatted_output.txt
 
       - name: Read and Format Output for Discord
-        # --- THIS IS THE FINAL, CORRECTED STEP ---
-        id: format_message # Give the step an ID to reference its output
+        # --- THIS IS THE FINAL, SIMPLIFIED, AND CORRECTED STEP ---
+        id: format_message
         run: |
-          # Start with the title and initial newlines
+          # Start with the main title
           MESSAGE="📊 **Work Distribution Results**\n\n"
           
-          # Read the assignment lines and build the message string
+          # Process the assignment lines and build the message
           while IFS= read -r line; do
+            # Extract the work area (key) and the names (value)
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
-            case "$key" in
-              "Tank")      icon="🛢️"; sub_icon="💧";;
-              "Bin")       icon="🗑️"; sub_icon="🚮";;
-              "Frontyard") icon="🚪"; sub_icon="🛠️";;
-              "Toilet A")  icon="🚻"; sub_icon="🧽";;
-              "Toilet B")  icon="🚻"; sub_icon="🧼";;
-              "Backyard")  icon="🏡"; sub_icon="🌿";;
-              "Parlor")    icon="🛋️"; sub_icon="🧹";;
-              *)           icon="🔹"; sub_icon="";;
-            esac
-            
-            # Append the formatted line to the message variable
-            MESSAGE+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
+            # Append the formatted line to the message variable, matching the desired format
+            MESSAGE+="🔹 **$key**\nAssigned: $value\n\n"
           done < formatted_output.txt
           
-          # Use an environment file to handle the multi-line string safely
-          # This is the most robust method in GitHub Actions
+          # Use an environment file to safely handle the multi-line string
           echo "message_content<<EOF" >> $GITHUB_ENV
           echo "$MESSAGE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Construct JSON Payload using jq
-        # This step uses the 'jq' tool, which is standard on GitHub runners,
-        # to safely create the JSON payload. It handles all escaping correctly.
         run: |
+          # Use jq to safely create the JSON payload from the environment variable
           jq -n --arg content "${{ env.message_content }}" '{"content": $content}' > discord_payload.json
 
       - name: Debug Discord Payload
