@@ -66,9 +66,8 @@ jobs:
           name: work-output
           path: .
       
-      - name: Prepare Discord Embed Fields
-        # This step builds a string of JSON 'field' objects, one for each assignment.
-        id: format_fields
+      - name: Format and Send Discord Notification
+        # This single, unified step prevents errors from passing data between steps.
         run: |
           # Filter for only the assignment lines
           grep '➡️' output.txt > formatted_output.txt
@@ -97,21 +96,16 @@ jobs:
             FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
           
-          # Remove the trailing comma
+          # Remove the trailing comma and wrap in brackets to form a valid array
           FIELDS_JSON="[${FIELDS_JSON%,}]"
           
-          # Save the final JSON array to a GitHub Actions output variable
-          echo "fields_json=$FIELDS_JSON" >> $GITHUB_OUTPUT
-
-      - name: Construct and Send Discord Payload
-        run: |
           # Get the current timestamp in ISO 8601 format
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
+
           # Use jq to construct the final, complex embed object.
-          # We pass the fields JSON string from the previous step's output.
+          # We now pass the FIELDS_JSON string as a shell variable directly into one jq command.
           jq -n \
-            --argjson fields "${{ steps.format_fields.outputs.fields_json }}" \
+            --argjson fields "$FIELDS_JSON" \
             --arg timestamp "$TIMESTAMP" \
             '{
               "embeds": [
