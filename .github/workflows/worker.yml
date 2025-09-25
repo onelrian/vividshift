@@ -14,14 +14,11 @@ on:
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -32,23 +29,18 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
-
       - name: Run Docker Container and Capture Output
         run: |
           docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          
           echo "🔍 Checking output.txt:"
           cat output.txt || echo "⚠️ No content in output.txt"
-
           if [ ! -s output.txt ]; then
             echo "❌ Error: output.txt is empty! Exiting."
             exit 1
           fi
-
       - name: Commit updated assignment history
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -57,7 +49,6 @@ jobs:
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
           commit_author: "GitHub Actions Bot <actions@github.com>"
-
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -69,61 +60,76 @@ jobs:
     needs: build-and-run
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Download Output Artifact
         uses: actions/download-artifact@v4
         with:
           name: work-output
           path: .
-
-      - name: Decode Output for Discord
+      
+      - name: Prepare Discord Embed Fields
+        # This step builds a string of JSON 'field' objects, one for each assignment.
+        id: format_fields
         run: |
-          if [ ! -f output.txt ] || [ ! -s output.txt ]; then
-            echo "❌ Error: output.txt is missing or empty! Exiting."
-            exit 1
-          fi
           # Filter for only the assignment lines
           grep '➡️' output.txt > formatted_output.txt
-
-      - name: Read and Format Output for Discord
-        # --- THIS IS THE FINAL, SIMPLIFIED, AND CORRECTED STEP ---
-        id: format_message
-        run: |
-          # Start with the main title
-          MESSAGE="📊 **Work Distribution Results**\n\n"
           
-          # Process the assignment lines and build the message
+          # Start building the JSON array for the fields
+          FIELDS_JSON=""
           while IFS= read -r line; do
-            # Extract the work area (key) and the names (value)
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
-            # Append the formatted line to the message variable, matching the desired format
-            MESSAGE+="🔹 **$key**\nAssigned: $value\n\n"
+            case "$key" in
+              "Tank")      icon="🛢️";;
+              "Bin")       icon="🗑️";;
+              "Frontyard") icon="🚪";;
+              "Toilet A")  icon="🚻";;
+              "Toilet B")  icon="🚻";;
+              "Backyard")  icon="🏡";;
+              "Parlor")    icon="🛋️";;
+              *)           icon="🔹";;
+            esac
+
+            # Use jq to safely create a JSON object for this field
+            # and append it to our string, separated by commas.
+            FIELD=$(jq -n --arg name "$icon $key" --arg value "Assigned: $value" \
+              '{name: $name, value: $value, inline: false}')
+            FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
           
-          # Use an environment file to safely handle the multi-line string
-          echo "message_content<<EOF" >> $GITHUB_ENV
-          echo "$MESSAGE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          # Remove the trailing comma
+          FIELDS_JSON="[${FIELDS_JSON%,}]"
+          
+          # Save the final JSON array to a GitHub Actions output variable
+          echo "fields_json=$FIELDS_JSON" >> $GITHUB_OUTPUT
 
-      - name: Construct JSON Payload using jq
+      - name: Construct and Send Discord Payload
         run: |
-          # Use jq to safely create the JSON payload from the environment variable
-          jq -n --arg content "${{ env.message_content }}" '{"content": $content}' > discord_payload.json
-
-      - name: Debug Discord Payload
-        run: cat discord_payload.json
-
-      - name: Send to Discord
-        run: |
-          if [ -s discord_payload.json ]; then
-            curl -X POST -H "Content-Type: application/json" \
-              --fail --silent --show-error \
-              -d @discord_payload.json \
-              ${{ secrets.DISCORD_WEBHOOK }}
-          else
-            echo "⚠️ No data to send to Discord."
-          fi
+          # Get the current timestamp in ISO 8601 format
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Use jq to construct the final, complex embed object.
+          # We pass the fields JSON string from the previous step's output.
+          jq -n \
+            --argjson fields "${{ steps.format_fields.outputs.fields_json }}" \
+            --arg timestamp "$TIMESTAMP" \
+            '{
+              "embeds": [
+                {
+                  "title": "📊 Work Distribution Results",
+                  "color": 5814783,
+                  "timestamp": $timestamp,
+                  "fields": $fields
+                }
+              ]
+            }' > discord_payload.json
+            
+          echo "--- Generated Payload ---"
+          cat discord_payload.json
+          echo "-----------------------"
+          
+          # Send the payload to Discord
+          curl -X POST -H "Content-Type: application/json" \
+            --fail --silent --show-error \
+            -d @discord_payload.json \
+            ${{ secrets.DISCORD_WEBHOOK }}
