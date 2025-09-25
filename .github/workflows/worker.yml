@@ -3,10 +3,7 @@
 name: Build and Deploy Docker Container
 
 on:
-  push:
-    branches:
-      - main
-      - develop
+  
   workflow_dispatch:
   schedule:
     - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
