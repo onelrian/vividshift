@@ -84,22 +84,21 @@ jobs:
             echo "❌ Error: output.txt is missing or empty! Exiting."
             exit 1
           fi
-          cat output.txt > formatted_output.txt
+          # We only need the lines with the actual assignments for the message
+          grep '➡️' output.txt > formatted_output.txt
 
       - name: Read and Format Output for Discord
-        # --- THIS IS THE CORRECTED STEP ---
+        # --- THIS IS THE FINAL, CORRECTED STEP ---
+        id: format_message # Give the step an ID to reference its output
         run: |
-          # Initialize the content string for the Discord message
-          MESSAGE_CONTENT="📊 **Work Distribution Results**\n\n"
+          # Start with the title and initial newlines
+          MESSAGE="📊 **Work Distribution Results**\n\n"
           
-          # Read the formatted output file and build the message content
-          # We filter to only include lines with the arrow, which represent assignments
-          grep '➡️' formatted_output.txt | while IFS= read -r line; do
-            # Robustly extract the key (work area) and value (names)
+          # Read the assignment lines and build the message string
+          while IFS= read -r line; do
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
-            # Assign icons based on the work area
             case "$key" in
               "Tank")      icon="🛢️"; sub_icon="💧";;
               "Bin")       icon="🗑️"; sub_icon="🚮";;
@@ -111,17 +110,21 @@ jobs:
               *)           icon="🔹"; sub_icon="";;
             esac
             
-            # Append the formatted line to our message content variable
-            # We use printf for safety with special characters
-            MESSAGE_CONTENT+=$(printf '%s' "$icon **$key**\n$sub_icon Assigned: $value\n\n")
-          done
+            # Append the formatted line to the message variable
+            MESSAGE+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
+          done < formatted_output.txt
           
-          # Properly escape the entire multi-line string for a JSON payload
-          # Using `sed -z` is the most reliable way to replace all newlines
-          ESCAPED_CONTENT=$(echo -n "$MESSAGE_CONTENT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed -z 's/\n/\\n/g')
-          
-          # Construct the final JSON payload
-          echo "{\"content\": \"$ESCAPED_CONTENT\"}" > discord_payload.json
+          # Use an environment file to handle the multi-line string safely
+          # This is the most robust method in GitHub Actions
+          echo "message_content<<EOF" >> $GITHUB_ENV
+          echo "$MESSAGE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Construct JSON Payload using jq
+        # This step uses the 'jq' tool, which is standard on GitHub runners,
+        # to safely create the JSON payload. It handles all escaping correctly.
+        run: |
+          jq -n --arg content "${{ env.message_content }}" '{"content": $content}' > discord_payload.json
 
       - name: Debug Discord Payload
         run: cat discord_payload.json
