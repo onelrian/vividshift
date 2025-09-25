@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
+      - develop # Added develop branch to triggers for testing
   workflow_dispatch:
   schedule:
-    - cron: '0 10 */14 * *'  # Runs every 14 days at 10 AM UTC
+    - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
 
 jobs:
   build-and-run:
@@ -35,11 +36,12 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
       - name: Run Docker Container and Capture Output
+        # This mounts the current directory into the container, allowing the app
+        # to create/modify assignment_history.json in the repository workspace.
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
+          docker run --rm -v "$(pwd):/app" ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
           
           echo "🔍 Checking output.txt:"
-          ls -lah output.txt  # Debugging step
           cat output.txt || echo "⚠️ No content in output.txt"
 
           if [ ! -s output.txt ]; then
@@ -47,9 +49,16 @@ jobs:
             exit 1
           fi
 
-      - name: Encode Output for GitHub Actions
-        run: |
-          echo "ENCODED_OUTPUT=$(base64 -w0 < output.txt)" >> $GITHUB_ENV
+      - name: Commit updated assignment history
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: Update assignment history [skip ci]"
+          # --- THIS IS THE CRITICAL CHANGE ---
+          # We now commit the new JSON history file, not the old .txt file.
+          file_pattern: assignment_history.json
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions Bot <actions@github.com>"
 
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
@@ -61,7 +70,8 @@ jobs:
   send-to-discord:
     needs: build-and-run
     runs-on: ubuntu-latest
-
+    # This job does not need any changes as it works with the console output,
+    # which has not changed.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,26 +88,16 @@ jobs:
             echo "❌ Error: output.txt is missing or empty! Exiting."
             exit 1
           fi
-
           cat output.txt > formatted_output.txt
-
-          echo "🔍 Checking formatted_output.txt:"
-          ls -lah formatted_output.txt  # Debugging step
-          cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
-
-          if [ ! -s formatted_output.txt ]; then
-            echo "❌ Error: formatted_output.txt is empty! Exiting."
-            exit 1
-          fi
 
       - name: Read and Format Output for Discord
         run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-
           while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
+            key=$(echo "$line" | awk -F':' '{print $1}' | xargs)
+            value=$(echo "$line" | awk -F':' '{print $2}' | xargs)
+            key=${key/➡️  /}
+            
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
               "Bin") icon="🗑️"; sub_icon="🚮";;
@@ -108,10 +108,9 @@ jobs:
               "Parlor") icon="🛋️"; sub_icon="🧹";;
               *) icon="🔹"; sub_icon="";;
             esac
-
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
           done < formatted_output.txt
-
+          FORMATTED_OUTPUT=$(echo "$FORMATTED_OUTPUT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\n/\\n/g')
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
