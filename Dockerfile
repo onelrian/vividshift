@@ -1,16 +1,24 @@
-# Start from Rust base image
-FROM rust:latest
-
-WORKDIR /app
+# ---- Stage 1: The Builder ----
+# This stage compiles the Rust application.
+FROM rust:latest AS builder
 
 # Install dependencies for static linking
-RUN apt update && apt install -y musl-tools && rustup target add x86_64-unknown-linux-musl
+WORKDIR /app
+RUN apt-get update && apt-get install -y musl-tools && rustup target add x86_64-unknown-linux-musl
 
-# Copy source code
+# Copy the source code and build the application
 COPY . .
-
-# Build the Rust application
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
-# Run the binary
-CMD ["./target/x86_64-unknown-linux-musl/release/work_group_generator"]
+
+# ---- Stage 2: The Final Image ----
+# This stage creates the small, final image for running the application.
+FROM debian:bullseye-slim
+
+# Copy the compiled binary from the "builder" stage to a safe location
+# that is in the system's PATH.
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/work_group_generator /usr/local/bin/
+
+# Set the command to run the application.
+# Because it's in the PATH, we can just use the binary name.
+CMD ["work_group_generator"]

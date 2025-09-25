@@ -36,10 +36,12 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
       - name: Run Docker Container and Capture Output
-        # This mounts the current directory into the container, allowing the app
-        # to create/modify assignment_history.json in the repository workspace.
+        # --- THIS IS THE CRITICAL CHANGE ---
+        # Added '-w /app' to set the working directory for the running program.
+        # This ensures it can find file_a.txt and assignment_history.json
+        # inside the mounted volume.
         run: |
-          docker run --rm -v "$(pwd):/app" ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
+          docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
           
           echo "🔍 Checking output.txt:"
           cat output.txt || echo "⚠️ No content in output.txt"
@@ -53,8 +55,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: Update assignment history [skip ci]"
-          # --- THIS IS THE CRITICAL CHANGE ---
-          # We now commit the new JSON history file, not the old .txt file.
           file_pattern: assignment_history.json
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
@@ -68,10 +68,9 @@ jobs:
           retention-days: 1
 
   send-to-discord:
+    # This job does not need any changes.
     needs: build-and-run
     runs-on: ubuntu-latest
-    # This job does not need any changes as it works with the console output,
-    # which has not changed.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -93,10 +92,14 @@ jobs:
       - name: Read and Format Output for Discord
         run: |
           FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
+          # Using a temporary file to avoid issues with special characters in the loop
+          TMP_FILE=$(mktemp)
+          # Process the output file line by line
+          # This handles lines like "➡️  Parlor      : Person1, Person2"
+          grep '➡️' formatted_output.txt > "$TMP_FILE"
           while IFS= read -r line; do
-            key=$(echo "$line" | awk -F':' '{print $1}' | xargs)
-            value=$(echo "$line" | awk -F':' '{print $2}' | xargs)
-            key=${key/➡️  /}
+            key=$(echo "$line" | awk -F':' '{print $1}' | xargs | sed 's/➡️  //')
+            value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
             case "$key" in
               "Tank") icon="🛢️"; sub_icon="💧";;
@@ -109,8 +112,9 @@ jobs:
               *) icon="🔹"; sub_icon="";;
             esac
             FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done < formatted_output.txt
-          FORMATTED_OUTPUT=$(echo "$FORMATTED_OUTPUT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\n/\\n/g')
+          done < "$TMP_FILE"
+          # Escape special characters for JSON payload
+          FORMATTED_OUTPUT=$(echo -n "$FORMATTED_OUTPUT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed -z 's/\n/\\n/g')
           echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
