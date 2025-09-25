@@ -1,24 +1,21 @@
+# .github/workflows/main.yml
+
 name: Build and Deploy Docker Container
 
 on:
-  push:
-    branches:
-      - main
+  
   workflow_dispatch:
   schedule:
-    - cron: '0 10 */14 * *'  # Runs every 14 days at 10 AM UTC
+    - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -29,28 +26,26 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
-
       - name: Run Docker Container and Capture Output
         run: |
-          docker run --rm ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          
+          docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
           echo "🔍 Checking output.txt:"
-          ls -lah output.txt  # Debugging step
           cat output.txt || echo "⚠️ No content in output.txt"
-
           if [ ! -s output.txt ]; then
             echo "❌ Error: output.txt is empty! Exiting."
             exit 1
           fi
-
-      - name: Encode Output for GitHub Actions
-        run: |
-          echo "ENCODED_OUTPUT=$(base64 -w0 < output.txt)" >> $GITHUB_ENV
-
+      - name: Commit updated assignment history
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: Update assignment history [skip ci]"
+          file_pattern: assignment_history.json
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions Bot <actions@github.com>"
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -61,69 +56,71 @@ jobs:
   send-to-discord:
     needs: build-and-run
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Download Output Artifact
         uses: actions/download-artifact@v4
         with:
           name: work-output
           path: .
-
-      - name: Decode Output for Discord
+      
+      - name: Format and Send Discord Notification
+        # This single, unified step prevents errors from passing data between steps.
         run: |
-          if [ ! -f output.txt ] || [ ! -s output.txt ]; then
-            echo "❌ Error: output.txt is missing or empty! Exiting."
-            exit 1
-          fi
-
-          cat output.txt > formatted_output.txt
-
-          echo "🔍 Checking formatted_output.txt:"
-          ls -lah formatted_output.txt  # Debugging step
-          cat formatted_output.txt || echo "⚠️ No content in formatted_output.txt"
-
-          if [ ! -s formatted_output.txt ]; then
-            echo "❌ Error: formatted_output.txt is empty! Exiting."
-            exit 1
-          fi
-
-      - name: Read and Format Output for Discord
-        run: |
-          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-
+          # Filter for only the assignment lines
+          grep '➡️' output.txt > formatted_output.txt
+          
+          # Start building the JSON array for the fields
+          FIELDS_JSON=""
           while IFS= read -r line; do
-            key=$(echo "$line" | awk -F': ' '{print $1}')
-            value=$(echo "$line" | awk -F': ' '{print $2}' | tr -d '[]"')
-
+            key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
+            value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
+            
             case "$key" in
-              "Tank") icon="🛢️"; sub_icon="💧";;
-              "Bin") icon="🗑️"; sub_icon="🚮";;
-              "Frontyard") icon="🚪"; sub_icon="🛠️";;
-              "Toilet A") icon="🚻"; sub_icon="🧽";;
-              "Toilet B") icon="🚻"; sub_icon="🧼";;
-              "Backyard") icon="🏡"; sub_icon="🌿";;
-              "Parlor") icon="🛋️"; sub_icon="🧹";;
-              *) icon="🔹"; sub_icon="";;
+              "Tank")      icon="🛢️";;
+              "Bin")       icon="🗑️";;
+              "Frontyard") icon="🚪";;
+              "Toilet A")  icon="🚻";;
+              "Toilet B")  icon="🚻";;
+              "Backyard")  icon="🏡";;
+              "Parlor")    icon="🛋️";;
+              *)           icon="🔹";;
             esac
 
-            FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
+            # Use jq to safely create a JSON object for this field
+            # and append it to our string, separated by commas.
+            FIELD=$(jq -n --arg name "$icon $key" --arg value "Assigned: $value" \
+              '{name: $name, value: $value, inline: false}')
+            FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
+          
+          # Remove the trailing comma and wrap in brackets to form a valid array
+          FIELDS_JSON="[${FIELDS_JSON%,}]"
+          
+          # Get the current timestamp in ISO 8601 format
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
-
-      - name: Debug Discord Payload
-        run: cat discord_payload.json
-
-      - name: Send to Discord
-        run: |
-          if [ -s discord_payload.json ]; then
-            curl -X POST -H "Content-Type: application/json" \
-              --fail --silent --show-error \
-              -d @discord_payload.json \
-              ${{ secrets.DISCORD_WEBHOOK }}
-          else
-            echo "⚠️ No data to send to Discord."
-          fi
+          # Use jq to construct the final, complex embed object.
+          # We now pass the FIELDS_JSON string as a shell variable directly into one jq command.
+          jq -n \
+            --argjson fields "$FIELDS_JSON" \
+            --arg timestamp "$TIMESTAMP" \
+            '{
+              "embeds": [
+                {
+                  "title": "📊 Work Distribution Results",
+                  "color": 5814783,
+                  "timestamp": $timestamp,
+                  "fields": $fields
+                }
+              ]
+            }' > discord_payload.json
+            
+          echo "--- Generated Payload ---"
+          cat discord_payload.json
+          echo "-----------------------"
+          
+          # Send the payload to Discord
+          curl -X POST -H "Content-Type: application/json" \
+            --fail --silent --show-error \
+            -d @discord_payload.json \
+            ${{ secrets.DISCORD_WEBHOOK }}
