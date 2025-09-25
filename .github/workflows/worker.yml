@@ -6,12 +6,22 @@ on:
   
   workflow_dispatch:
   schedule:
-    - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
+    - cron: '0 10 * * 1' # Every Monday at 10 AM UTC (fortnightly with conditional check)
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
     steps:
+      - name: Check if fortnightly run is due
+        run: |
+          # Calculate week number since epoch (Jan 1, 1970)
+          WEEK_NUM=$(( $(date +%s) / 604800 ))
+          # Only run on even weeks (every 2 weeks)
+          if [ $(( WEEK_NUM % 2 )) -ne 0 ]; then
+            echo "Skipping run - not a fortnightly week (week $WEEK_NUM)"
+            exit 0
+          fi
+          echo "Proceeding with fortnightly run (week $WEEK_NUM)"
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up Docker Buildx
