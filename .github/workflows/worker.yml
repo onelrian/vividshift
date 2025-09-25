@@ -1,10 +1,12 @@
+# .github/workflows/main.yml
+
 name: Build and Deploy Docker Container
 
 on:
   push:
     branches:
       - main
-      - develop # Added develop branch to triggers for testing
+      - develop
   workflow_dispatch:
   schedule:
     - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
@@ -36,10 +38,6 @@ jobs:
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
 
       - name: Run Docker Container and Capture Output
-        # --- THIS IS THE CRITICAL CHANGE ---
-        # Added '-w /app' to set the working directory for the running program.
-        # This ensures it can find file_a.txt and assignment_history.json
-        # inside the mounted volume.
         run: |
           docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
           
@@ -68,7 +66,6 @@ jobs:
           retention-days: 1
 
   send-to-discord:
-    # This job does not need any changes.
     needs: build-and-run
     runs-on: ubuntu-latest
     steps:
@@ -90,32 +87,41 @@ jobs:
           cat output.txt > formatted_output.txt
 
       - name: Read and Format Output for Discord
+        # --- THIS IS THE CORRECTED STEP ---
         run: |
-          FORMATTED_OUTPUT="📊 **Work Distribution Results**\n\n"
-          # Using a temporary file to avoid issues with special characters in the loop
-          TMP_FILE=$(mktemp)
-          # Process the output file line by line
-          # This handles lines like "➡️  Parlor      : Person1, Person2"
-          grep '➡️' formatted_output.txt > "$TMP_FILE"
-          while IFS= read -r line; do
-            key=$(echo "$line" | awk -F':' '{print $1}' | xargs | sed 's/➡️  //')
+          # Initialize the content string for the Discord message
+          MESSAGE_CONTENT="📊 **Work Distribution Results**\n\n"
+          
+          # Read the formatted output file and build the message content
+          # We filter to only include lines with the arrow, which represent assignments
+          grep '➡️' formatted_output.txt | while IFS= read -r line; do
+            # Robustly extract the key (work area) and value (names)
+            key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
+            # Assign icons based on the work area
             case "$key" in
-              "Tank") icon="🛢️"; sub_icon="💧";;
-              "Bin") icon="🗑️"; sub_icon="🚮";;
+              "Tank")      icon="🛢️"; sub_icon="💧";;
+              "Bin")       icon="🗑️"; sub_icon="🚮";;
               "Frontyard") icon="🚪"; sub_icon="🛠️";;
-              "Toilet A") icon="🚻"; sub_icon="🧽";;
-              "Toilet B") icon="🚻"; sub_icon="🧼";;
-              "Backyard") icon="🏡"; sub_icon="🌿";;
-              "Parlor") icon="🛋️"; sub_icon="🧹";;
-              *) icon="🔹"; sub_icon="";;
+              "Toilet A")  icon="🚻"; sub_icon="🧽";;
+              "Toilet B")  icon="🚻"; sub_icon="🧼";;
+              "Backyard")  icon="🏡"; sub_icon="🌿";;
+              "Parlor")    icon="🛋️"; sub_icon="🧹";;
+              *)           icon="🔹"; sub_icon="";;
             esac
-            FORMATTED_OUTPUT+="$icon **$key**\n$sub_icon Assigned: $value\n\n"
-          done < "$TMP_FILE"
-          # Escape special characters for JSON payload
-          FORMATTED_OUTPUT=$(echo -n "$FORMATTED_OUTPUT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed -z 's/\n/\\n/g')
-          echo "{\"content\": \"$FORMATTED_OUTPUT\"}" > discord_payload.json
+            
+            # Append the formatted line to our message content variable
+            # We use printf for safety with special characters
+            MESSAGE_CONTENT+=$(printf '%s' "$icon **$key**\n$sub_icon Assigned: $value\n\n")
+          done
+          
+          # Properly escape the entire multi-line string for a JSON payload
+          # Using `sed -z` is the most reliable way to replace all newlines
+          ESCAPED_CONTENT=$(echo -n "$MESSAGE_CONTENT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed -z 's/\n/\\n/g')
+          
+          # Construct the final JSON payload
+          echo "{\"content\": \"$ESCAPED_CONTENT\"}" > discord_payload.json
 
       - name: Debug Discord Payload
         run: cat discord_payload.json
