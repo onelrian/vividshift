@@ -35,7 +35,7 @@ To run the program:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/VividShift.git
+   git clone https://github.com/onelrian/VividShift.git
    cd VividShift
    ```
 
