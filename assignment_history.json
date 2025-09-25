@@ -1,76 +1,76 @@
 {
   "assignments": {
-    "Junine": [
-      "Tank",
-      "Bin"
-    ],
-    "Vitalis": [
-      "Parlor",
-      "Toilet B"
-    ],
-    "Michael": [
-      "Frontyard",
-      "Backyard"
-    ],
-    "Severian": [
-      "Parlor",
-      "Toilet A"
+    "Usher": [
+      "Toilet B",
+      "Parlor"
     ],
     "Frank": [
-      "Bin",
+      "Toilet A",
+      "Bin"
+    ],
+    "Michael": [
+      "Toilet B",
+      "Frontyard"
+    ],
+    "Severian": [
+      "Tank",
       "Parlor"
     ],
     "Derick": [
-      "Toilet A",
-      "Frontyard"
-    ],
-    "Emmanuel": [
-      "Parlor",
-      "Toilet B"
-    ],
-    "Richmond": [
-      "Toilet B",
-      "Frontyard"
-    ],
-    "Mark": [
-      "Frontyard",
-      "Toilet B"
-    ],
-    "Onel": [
-      "Backyard",
-      "Parlor"
-    ],
-    "Prosper": [
-      "Frontyard",
-      "Parlor"
-    ],
-    "Christian": [
-      "Tank",
-      "Parlor"
-    ],
-    "Ghislain": [
-      "Toilet B",
-      "Tank"
-    ],
-    "Usher": [
-      "Parlor",
-      "Toilet B"
-    ],
-    "Romeo": [
-      "Toilet B",
-      "Parlor"
-    ],
-    "Maxwell": [
-      "Toilet A",
-      "Frontyard"
-    ],
-    "Nathan": [
       "Parlor",
       "Toilet A"
     ],
+    "Nathan": [
+      "Bin",
+      "Parlor"
+    ],
     "Desmond": [
+      "Frontyard",
+      "Toilet B"
+    ],
+    "Junine": [
+      "Parlor",
+      "Tank"
+    ],
+    "Mark": [
+      "Toilet B",
+      "Frontyard"
+    ],
+    "Onel": [
+      "Toilet A",
+      "Backyard"
+    ],
+    "Christian": [
       "Toilet B",
       "Tank"
+    ],
+    "Maxwell": [
+      "Parlor",
+      "Toilet A"
+    ],
+    "Vitalis": [
+      "Frontyard",
+      "Parlor"
+    ],
+    "Prosper": [
+      "Backyard",
+      "Frontyard"
+    ],
+    "Romeo": [
+      "Tank",
+      "Toilet B"
+    ],
+    "Ghislain": [
+      "Parlor",
+      "Toilet B"
+    ],
+    "Emmanuel": [
+      "Frontyard",
+      "Parlor"
+    ],
+    "Richmond": [
+      "Parlor",
+      "Toilet B"
     ]
   }
 }
