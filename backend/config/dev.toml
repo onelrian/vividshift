@@ -1,0 +1,13 @@
+[server]
+host = "127.0.0.1"
+port = 8080
+environment = "dev"
+
+[database]
+url = "postgresql://localhost:5432/vividshift_dev"
+
+[logging]
+level = "debug"
+file_enabled = true
+file_path = "logs/dev.log"
+json_format = false

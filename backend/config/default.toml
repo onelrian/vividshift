@@ -1,0 +1,33 @@
+[server]
+host = "0.0.0.0"
+port = 8080
+environment = "dev"
+
+[database]
+url = "postgresql://localhost:5432/vividshift_dev"
+max_connections = 10
+min_connections = 1
+connect_timeout = 30
+
+[auth]
+jwt_secret = "dev-secret-change-in-production"
+jwt_expiration = 86400  # 24 hours in seconds
+bcrypt_cost = 12
+
+[logging]
+level = "info"
+file_enabled = false
+file_path = "logs/app.log"
+json_format = false
+
+[work_assignments]
+max_attempts = 50
+
+[work_assignments.assignments]
+"Parlor" = 5
+"Frontyard" = 3
+"Backyard" = 1
+"Tank" = 2
+"Toilet B" = 4
+"Toilet A" = 2
+"Bin" = 1

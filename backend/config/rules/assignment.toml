@@ -1,0 +1,38 @@
+[assignment_strategy]
+name = "balanced_rotation"
+description = "Balanced assignment with rotation history consideration"
+
+[assignment_strategy.parameters]
+rotation_weight = 0.7
+balance_weight = 0.3
+max_attempts = 50
+allow_partial_assignments = false
+require_minimum_coverage = true
+
+[assignment_strategy.constraints]
+max_assignments_per_participant = 3
+min_participants_per_target = 1
+prefer_group_diversity = true
+avoid_consecutive_assignments = true
+
+[validation_rules]
+participant_availability = { enabled = true, strict = false }
+target_capacity_limits = { enabled = true, strict = true }
+skill_matching = { enabled = false, strict = false }
+group_balance = { enabled = true, strict = false }
+
+[history_tracking]
+enabled = true
+retention_days = 365
+weight_decay_factor = 0.95
+consider_partial_assignments = true
+
+[strategies.random_assignment]
+name = "random_assignment"
+description = "Simple random assignment strategy"
+parameters = { max_attempts = 10, seed = 42 }
+
+[strategies.skill_based]
+name = "skill_based"
+description = "Assignment based on participant skills and target requirements"
+parameters = { skill_weight = 0.8, availability_weight = 0.2 }

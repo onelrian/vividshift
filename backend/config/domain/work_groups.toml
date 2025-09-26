@@ -1,0 +1,103 @@
+[domain]
+name = "work_groups"
+display_name = "Work Group Assignment System"
+description = "A flexible system for assigning participants to work targets"
+version = "1.0.0"
+
+[entities.assignment_target]
+name = "assignment_target"
+display_name = "Assignment Target"
+description = "A work location or task that requires people"
+version = "1.0"
+
+[entities.assignment_target.fields.name]
+field_type = "String"
+required = true
+display_name = "Name"
+description = "The name of the assignment target"
+
+[entities.assignment_target.fields.name.constraints]
+min_length = 1
+max_length = 100
+unique = true
+
+[entities.assignment_target.fields.required_count]
+field_type = "Integer"
+required = true
+default_value = 1
+display_name = "Required Count"
+description = "Number of participants required for this target"
+
+[entities.assignment_target.fields.required_count.constraints]
+min = 1
+max = 100
+
+[entities.assignment_target.fields.priority]
+field_type = "Integer"
+required = false
+default_value = 1
+display_name = "Priority"
+description = "Priority level for assignment (1=highest, 10=lowest)"
+
+[entities.assignment_target.fields.priority.constraints]
+min = 1
+max = 10
+
+[entities.participant]
+name = "participant"
+display_name = "Participant"
+description = "A person who can be assigned to targets"
+version = "1.0"
+
+[entities.participant.fields.name]
+field_type = "String"
+required = true
+display_name = "Name"
+description = "The name of the participant"
+
+[entities.participant.fields.name.constraints]
+min_length = 1
+max_length = 100
+
+[entities.participant.fields.group]
+field_type = "String"
+required = false
+display_name = "Group"
+description = "The group or team this participant belongs to"
+
+[entities.participant.fields.group.constraints]
+max_length = 50
+
+[entities.participant.fields.availability]
+field_type = "Boolean"
+required = false
+default_value = true
+display_name = "Availability"
+description = "Whether the participant is available for assignment"
+
+[default_data.assignment_targets]
+parlor = { name = "Parlor", required_count = 5, priority = 2 }
+frontyard = { name = "Frontyard", required_count = 3, priority = 1 }
+backyard = { name = "Backyard", required_count = 1, priority = 3 }
+tank = { name = "Tank", required_count = 2, priority = 2 }
+toilet_b = { name = "Toilet B", required_count = 4, priority = 1 }
+toilet_a = { name = "Toilet A", required_count = 2, priority = 1 }
+bin = { name = "Bin", required_count = 1, priority = 3 }
+
+[[business_rules]]
+name = "minimum_coverage"
+description = "Ensure all targets have minimum required participants"
+rule_type = "Validation"
+condition = "target.assigned_count >= target.required_count"
+action = "reject_assignment"
+priority = 1
+enabled = true
+
+[[business_rules]]
+name = "no_overassignment"
+description = "Prevent assigning more participants than needed"
+rule_type = "Constraint"
+condition = "target.assigned_count <= target.required_count * 1.2"
+action = "limit_assignments"
+priority = 2
+enabled = true

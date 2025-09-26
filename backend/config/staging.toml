@@ -1,0 +1,17 @@
+[server]
+host = "0.0.0.0"
+port = 8080
+environment = "staging"
+
+[database]
+url = "postgresql://staging-db:5432/vividshift_staging"
+max_connections = 20
+
+[logging]
+level = "info"
+file_enabled = true
+file_path = "logs/staging.log"
+json_format = true
+
+[auth]
+jwt_expiration = 43200  # 12 hours
