@@ -1,10 +1,10 @@
-# 🚀 VividShift Generic Assignment Engine API Documentation
+# VividShift API Documentation
 
 ## Overview
 
 The VividShift Generic Assignment Engine is a domain-agnostic system for managing entity assignments through configurable rules and strategies. It has been transformed from a simple work group CLI tool into a production-ready web service.
 
-## 🔐 Authentication
+## Authentication
 
 All protected endpoints require JWT authentication via the `Authorization` header:
 
@@ -93,7 +93,7 @@ Content-Type: application/json
 }
 ```
 
-## 🏗️ Entity Management Endpoints
+## Entity Management Endpoints
 
 ### List Entities
 
@@ -144,7 +144,7 @@ DELETE /api/entities/{entity_type}/{entity_id}
 Authorization: Bearer <token>
 ```
 
-## ⚙️ Rule Engine Endpoints
+## Rule Engine Endpoints
 
 ### List Available Strategies
 
@@ -353,7 +353,7 @@ impl ValidationRule for YourValidator {
 rule_engine.register_validator(YourValidator);
 ```
 
-## 🚀 Quick Start Examples
+## Quick Start Examples
 
 ### 1. Basic Assignment Generation
 
@@ -398,7 +398,7 @@ EOF
 docker-compose restart app
 ```
 
-## ⚠️ Error Handling
+## Error Handling
 
 The API returns standard HTTP status codes:
 
