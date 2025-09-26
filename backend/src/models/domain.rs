@@ -157,6 +157,12 @@ impl TryFrom<super::GenericEntity> for Participant {
         let mut preferences = HashMap::new();
         let mut metadata = HashMap::new();
 
+        // Extract basic attributes first
+        let name: String = entity.get_attribute("name").unwrap_or_default();
+        let group: Option<String> = entity.get_attribute("group");
+        let skills: Vec<String> = entity.get_attribute("skills").unwrap_or_default();
+        let availability: bool = entity.get_attribute("availability").unwrap_or(true);
+
         // Separate preferences from other attributes
         for (key, value) in entity.attributes {
             if key.starts_with("pref_") {
@@ -168,10 +174,10 @@ impl TryFrom<super::GenericEntity> for Participant {
 
         Ok(Participant {
             id: entity.id,
-            name: entity.get_attribute("name").unwrap_or_default(),
-            group: entity.get_attribute("group"),
-            skills: entity.get_attribute("skills").unwrap_or_default(),
-            availability: entity.get_attribute("availability").unwrap_or(true),
+            name,
+            group,
+            skills,
+            availability,
             preferences,
             metadata,
         })

@@ -5,7 +5,7 @@ use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    EnvFilter, Layer,
+    EnvFilter,
 };
 
 use crate::config::AppConfig;
@@ -45,13 +45,13 @@ pub fn init_logging(config: &AppConfig) -> Result<Option<WorkerGuard>> {
                 .with(filter)
                 .with(
                     fmt::layer()
-                        .json()
+                        .with_target(false)
                         .with_writer(std::io::stdout)
                         .with_span_events(FmtSpan::CLOSE),
                 )
                 .with(
                     fmt::layer()
-                        .json()
+                        .with_target(false)
                         .with_writer(non_blocking)
                         .with_span_events(FmtSpan::CLOSE),
                 )
@@ -80,7 +80,7 @@ pub fn init_logging(config: &AppConfig) -> Result<Option<WorkerGuard>> {
                 .with(filter)
                 .with(
                     fmt::layer()
-                        .json()
+                        .with_target(false)
                         .with_writer(std::io::stdout)
                         .with_span_events(FmtSpan::CLOSE),
                 )

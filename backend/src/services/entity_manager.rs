@@ -67,7 +67,8 @@ impl EntityManager {
     /// List entities by type
     pub async fn list_entities(&self, entity_type: &str) -> Result<Vec<GenericEntity>> {
         let entities = self.entities.read().await;
-        let type_entities = entities.get(entity_type).unwrap_or(&HashMap::new());
+        let empty_map = HashMap::new();
+        let type_entities = entities.get(entity_type).unwrap_or(&empty_map);
         
         Ok(type_entities
             .values()
@@ -145,7 +146,7 @@ impl EntityManager {
         for (field_name, field_def) in &entity_def.fields {
             let mut field_valid = true;
             let mut errors = Vec::new();
-            let mut warnings = Vec::new();
+            let warnings = Vec::new();
 
             // Check if required field is present
             if field_def.required && !attributes.contains_key(field_name) {

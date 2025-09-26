@@ -68,11 +68,11 @@ impl AppConfig {
         
         let config = Config::builder()
             // Start with default configuration
-            .add_source(File::with_name("backend/config/default").required(false))
+            .add_source(File::with_name("config/default").required(false))
             // Add environment-specific configuration
-            .add_source(File::with_name(&format!("backend/config/{}", environment)).required(false))
+            .add_source(File::with_name(&format!("config/{}", environment)).required(false))
             // Add local configuration (for development overrides)
-            .add_source(File::with_name("backend/config/local").required(false))
+            .add_source(File::with_name("config/local").required(false))
             // Add environment variables with prefix "VIVIDSHIFT_"
             .add_source(Environment::with_prefix("VIVIDSHIFT").separator("_"))
             .build()?;
