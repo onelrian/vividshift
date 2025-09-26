@@ -1,1 +1,55 @@
+# Rust build files
 target/
+Cargo.lock
+*.pdb
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Docker volumes and runtime files
+/data/*
+!data/.gitkeep
+*.pid
+*.sock
+docker-compose.override.yml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+
+# Test and coverage files
+.pytest_cache/
+coverage/
+*.coverage
+.nyc_output/
+
+# Runtime state
+*.state
+*.lock
+!Cargo.lock

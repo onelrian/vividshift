@@ -1,8 +1,8 @@
-# VividShift Backend
+# VividShift Generic Assignment Engine
 
-A production-ready Rust backend service for work group distribution with authentication, environment-based configuration, and comprehensive monitoring.
+A production-ready, domain-agnostic assignment engine built with Rust for high-performance participant-to-target assignment generation with pluggable rule engines.
 
-## 🏗️ Architecture
+## Architecture
 
 This application has been restructured from a simple CLI tool into a scalable web service with:
 
@@ -14,7 +14,7 @@ This application has been restructured from a simple CLI tool into a scalable we
 - **Containerization**: Docker and Docker Compose for development
 - **CI/CD**: GitHub Actions pipeline with automated testing and deployment
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -26,22 +26,29 @@ This application has been restructured from a simple CLI tool into a scalable we
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/onelrian/VividShift.git
-   cd VividShift
+   git clone https://github.com/onelrian/vividshift.git
+   cd vividshift
+   git checkout feature/fullstack-app
    ```
 
-2. **Run the setup script:**
+2. **Configure environment:**
    ```bash
-   ./scripts/setup.sh
+   cp .env.example .env
+   # Edit .env with your specific configuration
    ```
 
-3. **Access the services:**
+3. **Start the services:**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Access the services:**
    - **API**: http://localhost:8080
    - **Health Check**: http://localhost:8080/health
    - **Grafana**: http://localhost:3000 (admin/admin)
    - **Prometheus**: http://localhost:9090
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `POST /auth/login` - User login
@@ -198,7 +205,13 @@ The GitHub Actions pipeline includes:
      vividshift-backend
    ```
 
-## 📁 Project Structure
+## Documentation
+
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment and architecture
+- [API Documentation](docs/API_DOCUMENTATION.md) - Complete API reference
+- [User Manual](docs/USER_MANUAL.md) - Usage instructions and features
+
+## Project Structure
 
 ```
 VividShift/
@@ -207,19 +220,32 @@ VividShift/
 │   │   ├── api/            # HTTP API endpoints
 │   │   ├── auth/           # Authentication & authorization
 │   │   ├── config/         # Configuration management
+│   │   ├── engines/        # Assignment strategies
+│   │   ├── models/         # Data models
 │   │   ├── services/       # Business logic services
 │   │   └── main.rs         # Application entry point
 │   ├── config/             # Environment configurations
+│   │   ├── default.toml    # Default configuration
+│   │   ├── dev.toml        # Development overrides
+│   │   ├── prod.toml       # Production overrides
+│   │   ├── staging.toml    # Staging overrides
+│   │   ├── domain/         # Domain-specific configs
+│   │   └── rules/          # Rule engine configs
 │   └── Dockerfile          # Backend container
+├── data/                   # Docker volume mount points
+├── docs/                   # Documentation
+│   ├── API_DOCUMENTATION.md
+│   ├── DEPLOYMENT.md
+│   └── USER_MANUAL.md
 ├── monitoring/             # Monitoring configuration
 │   ├── prometheus.yml      # Prometheus config
 │   └── grafana/           # Grafana dashboards
-├── scripts/               # Setup and utility scripts
-├── docker-compose.yml     # Development environment
-└── .github/workflows/     # CI/CD pipeline
+├── scripts/               # Database initialization
+├── .env.example           # Environment template
+└── docker-compose.yml     # Development environment
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -227,7 +253,7 @@ VividShift/
 4. Add tests
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
