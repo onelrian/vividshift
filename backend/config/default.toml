@@ -31,3 +31,68 @@ max_attempts = 50
 "Toilet B" = 4
 "Toilet A" = 2
 "Bin" = 1
+
+[domain]
+name = "work_groups"
+display_name = "Work Group Assignment System"
+description = "Default work group assignment domain"
+version = "1.0"
+business_rules = []
+
+[domain.default_data]
+
+[domain.entities.assignment_target]
+name = "assignment_target"
+display_name = "Assignment Target"
+description = "A work location or task that requires people"
+version = "1.0"
+constraints = []
+
+[domain.entities.assignment_target.fields.name]
+field_type = "String"
+required = true
+display_name = "Name"
+description = "The name of the assignment target"
+
+[domain.entities.assignment_target.fields.required_count]
+field_type = "Integer"
+required = true
+default_value = 1
+display_name = "Required Count"
+description = "Number of participants required"
+
+[domain.entities.assignment_target.relationships]
+
+[domain.entities.participant]
+name = "participant"
+display_name = "Participant"
+description = "A person who can be assigned to targets"
+version = "1.0"
+constraints = []
+
+[domain.entities.participant.fields.name]
+field_type = "String"
+required = true
+display_name = "Name"
+description = "The name of the participant"
+
+[domain.entities.participant.fields.availability]
+field_type = "Boolean"
+required = false
+default_value = true
+display_name = "Availability"
+description = "Whether the participant is available"
+
+[domain.entities.participant.relationships]
+
+[rule_engine]
+default_strategy = "random_assignment"
+max_execution_time_ms = 30000
+enable_parallel_processing = true
+validation_mode = "Permissive"
+
+[engines]
+assignment_engines = ["random_assignment", "skill_based"]
+validation_engines = ["capacity_check", "availability_check", "skill_matching"]
+distribution_algorithms = ["workload_balancer"]
+default_strategy = "random_assignment"

@@ -31,4 +31,4 @@ EXPOSE 8080
 RUN mkdir -p logs
 
 # Run the application
-CMD ["cargo", "run", "--release"]
+CMD ["/app/target/release/vividshift_backend"]
