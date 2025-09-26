@@ -1,18 +1,16 @@
-use axum::{http::StatusCode, Json, State};
-use std::sync::Arc;
+use axum::{extract::State, http::StatusCode, Json};
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
+    api::AppState,
     auth::{
-        jwt::JwtService,
-        models::{AuthResponse, LoginRequest, RegisterRequest, User, UserInfo, UserRole},
+        models::{AuthResponse, LoginRequest, RegisterRequest, UserInfo, UserRole},
     },
-    config::AppConfig,
 };
 
 pub async fn login(
-    State(config): State<Arc<AppConfig>>,
+    State(app_state): State<AppState>,
     Json(request): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, StatusCode> {
     // Validate request
@@ -23,10 +21,7 @@ pub async fn login(
     // In a real application, you'd verify against database
     // For demo purposes, we'll use hardcoded credentials
     if request.username == "admin" && request.password == "password123" {
-        let jwt_service = JwtService::new(
-            &config.auth.jwt_secret,
-            config.auth.jwt_expiration,
-        );
+        let jwt_service = &app_state.auth_state.jwt_service;
 
         let user_id = Uuid::new_v4();
         let token = jwt_service
@@ -45,10 +40,7 @@ pub async fn login(
             user: user_info,
         }))
     } else if request.username == "user" && request.password == "password123" {
-        let jwt_service = JwtService::new(
-            &config.auth.jwt_secret,
-            config.auth.jwt_expiration,
-        );
+        let jwt_service = &app_state.auth_state.jwt_service;
 
         let user_id = Uuid::new_v4();
         let token = jwt_service
@@ -72,7 +64,7 @@ pub async fn login(
 }
 
 pub async fn register(
-    State(config): State<Arc<AppConfig>>,
+    State(app_state): State<AppState>,
     Json(request): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, StatusCode> {
     // Validate request
@@ -86,10 +78,7 @@ pub async fn register(
     // 3. Save to database
     // 4. Send verification email
 
-    let jwt_service = JwtService::new(
-        &config.auth.jwt_secret,
-        config.auth.jwt_expiration,
-    );
+    let jwt_service = &app_state.auth_state.jwt_service;
 
     let user_id = Uuid::new_v4();
     let token = jwt_service

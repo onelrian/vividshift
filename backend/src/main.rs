@@ -4,11 +4,6 @@ mod config;
 mod engines;
 mod models;
 mod services;
-// Legacy modules for backward compatibility
-mod group;
-mod history;
-mod files;
-mod output;
 
 use anyhow::Result;
 use axum::{
@@ -99,21 +94,35 @@ async fn create_app(
     entity_manager: Arc<EntityManager>,
     rule_engine: Arc<RuleEngine>,
 ) -> Result<Router> {
-    let protected_routes = Router::new()
-        .merge(api::create_router(
-            config.clone(), 
-            auth_state.clone(),
-            entity_manager.clone(),
-            rule_engine.clone(),
-        ))
+    // Create the main router with public routes
+    let public_router = api::create_router(
+        config.clone(), 
+        auth_state.clone(), 
+        entity_manager.clone(), 
+        rule_engine.clone()
+    );
+    
+    // Create protected routes that require authentication
+    let protected_router = Router::new()
+        .route("/api/work-groups/generate", axum::routing::post(api::work_groups::generate_work_groups_legacy))
+        .route("/api/work-groups/history", axum::routing::get(api::work_groups::get_history))
+        .route("/api/work-groups/assignments", 
+               axum::routing::get(api::work_groups::get_assignments_config)
+               .post(api::work_groups::update_assignments_config))
+        .with_state(api::AppState {
+            config: config.clone(),
+            auth_state: auth_state.clone(),
+            entity_manager: entity_manager.clone(),
+            rule_engine: rule_engine.clone(),
+        })
         .route_layer(middleware::from_fn_with_state(
             auth_state.clone(),
             auth_middleware,
         ));
 
     let app = Router::new()
-        .merge(api::create_router(config, auth_state, entity_manager, rule_engine))
-        .merge(protected_routes)
+        .merge(public_router)
+        .merge(protected_router)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
