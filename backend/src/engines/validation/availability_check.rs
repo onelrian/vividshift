@@ -16,7 +16,7 @@ impl ValidationRule for AvailabilityCheckValidator {
         participants: &[GenericEntity],
         _targets: &[GenericEntity],
         config: &HashMap<String, serde_json::Value>,
-    ) -> Result<ValidationResult> {
+    ) -> Result<ValidationResult, anyhow::Error> {
         let strict_mode = config
             .get("strict")
             .and_then(|v| v.as_bool())
