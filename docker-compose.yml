@@ -4,20 +4,14 @@ services:
   # Main application
   app:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - ENVIRONMENT=dev
       - VIVIDSHIFT_DATABASE_URL=postgresql://postgres:password@db:5432/vividshift_dev
-      - VIVIDSHIFT_AUTH_JWT_SECRET=dev-jwt-secret-change-in-production
-      - RUST_LOG=debug
-    volumes:
-      - ./backend:/app
-      - ./file_a.txt:/app/file_a.txt
-      - ./file_b.txt:/app/file_b.txt
-      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
