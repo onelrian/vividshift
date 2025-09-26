@@ -10,8 +10,9 @@ VividShift is a domain-agnostic Generic Assignment Engine built with Rust that p
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Git
+- [Docker](https://www.docker.com/products/docker-desktop)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [Rust](https://www.rust-lang.org/)
 
 ### Installation
 

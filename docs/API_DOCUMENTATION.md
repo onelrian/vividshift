@@ -36,7 +36,7 @@ Content-Type: application/json
 }
 ```
 
-## 🎯 Generic Assignment Endpoints
+## Generic Assignment Endpoints
 
 ### Generate Assignments
 
@@ -170,7 +170,7 @@ Authorization: Bearer <token>
 ["capacity_check", "availability_check", "skill_matching"]
 ```
 
-## 🔄 Legacy Endpoints (Backward Compatibility)
+## Legacy Endpoints (Backward Compatibility)
 
 ### Generate Work Groups (Legacy)
 
@@ -204,7 +204,7 @@ POST /api/work-groups/assignments
 Authorization: Bearer <token>
 ```
 
-## 📊 Health & Monitoring Endpoints
+## Health & Monitoring Endpoints
 
 ### Health Check
 
@@ -224,7 +224,7 @@ GET /ready
 GET /metrics
 ```
 
-## 🌍 Environment Configuration
+## Environment Configuration
 
 The system supports multiple environments through configuration files:
 
@@ -253,7 +253,7 @@ VIVIDSHIFT_LOGGING_FILE_ENABLED=true
 VIVIDSHIFT_LOGGING_JSON_FORMAT=false
 ```
 
-## 🎨 Domain Configuration
+## Domain Configuration
 
 Create new domains by adding configuration files:
 
@@ -291,7 +291,7 @@ parameters = { weight = 0.5, threshold = 10 }
 your_validation = { enabled = true, strict = false }
 ```
 
-## 🔌 Extending the System
+## Extending the System
 
 ### Adding New Assignment Strategies
 
