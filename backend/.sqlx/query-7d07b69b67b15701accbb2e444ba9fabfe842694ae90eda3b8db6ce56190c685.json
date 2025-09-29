@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                usesuper as is_superuser,\n                usecreatedb as can_create_db,\n                userepl as can_replicate,\n                usebypassrls as can_bypass_rls\n            FROM pg_user \n            WHERE usename = current_user\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_superuser",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "can_create_db",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "can_replicate",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "can_bypass_rls",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7d07b69b67b15701accbb2e444ba9fabfe842694ae90eda3b8db6ce56190c685"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT tablename\n            FROM pg_tables \n            WHERE schemaname = 'public'\n            AND tablename NOT IN (\n                SELECT DISTINCT table_name \n                FROM information_schema.table_constraints \n                WHERE constraint_type = 'PRIMARY KEY'\n            )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tablename",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "bbf373f1568501265419741015bc62d060e37eeb15ead099466d220383fe46f3"
+}

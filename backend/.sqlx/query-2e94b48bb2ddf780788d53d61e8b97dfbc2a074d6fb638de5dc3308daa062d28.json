@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                ad.*,\n                p.name as participant_name,\n                p.email as participant_email,\n                at.name as target_name,\n                at.description as target_description,\n                at.required_count as target_required_count\n            FROM assignment_details ad\n            JOIN participants p ON ad.participant_id = p.id\n            JOIN assignment_targets at ON ad.target_id = at.id\n            WHERE ad.assignment_id = $1\n            ORDER BY ad.position, ad.created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "assignment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "position",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "participant_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "participant_email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "target_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "target_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "target_required_count",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2e94b48bb2ddf780788d53d61e8b97dfbc2a074d6fb638de5dc3308daa062d28"
+}

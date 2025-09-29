@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT extname FROM pg_extension WHERE extname IN ('uuid-ossp', 'btree_gin')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "extname",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dbf9eb0cbb237045fc0917730c7fda004c1a9bb31e9e0e90e291cb9afa9db4e9"
+}

@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                schemaname,\n                relname as tablename,\n                n_tup_ins as inserts,\n                n_tup_upd as updates,\n                n_tup_del as deletes,\n                n_live_tup as live_tuples,\n                n_dead_tup as dead_tuples\n            FROM pg_stat_user_tables\n            ORDER BY n_live_tup DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "schemaname",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "tablename",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 2,
+        "name": "inserts",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "updates",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "deletes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "live_tuples",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "dead_tuples",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d48f6354bd445ffc8d79171f159bc82bd86ad80b21820d6b47d41620599ff6e6"
+}

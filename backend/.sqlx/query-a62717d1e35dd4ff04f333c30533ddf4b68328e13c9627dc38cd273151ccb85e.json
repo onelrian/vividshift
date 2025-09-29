@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                setting::int as max_connections\n            FROM pg_settings \n            WHERE name = 'max_connections'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "max_connections",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a62717d1e35dd4ff04f333c30533ddf4b68328e13c9627dc38cd273151ccb85e"
+}

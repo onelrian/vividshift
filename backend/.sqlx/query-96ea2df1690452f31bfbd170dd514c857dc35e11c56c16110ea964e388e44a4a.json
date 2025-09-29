@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                current_user as username,\n                inet_client_addr() as client_addr,\n                inet_server_addr() as server_addr\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_addr",
+        "type_info": "Inet"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_addr",
+        "type_info": "Inet"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "96ea2df1690452f31bfbd170dd514c857dc35e11c56c16110ea964e388e44a4a"
+}

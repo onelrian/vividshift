@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                mode,\n                COUNT(*) as count\n            FROM pg_locks \n            WHERE NOT granted \n            GROUP BY mode\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "mode",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "25bc798fb518567bd216d68d76b76c34fe3be70469cac538ceb580d2bcd0fc2b"
+}

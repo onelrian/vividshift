@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT grantee, table_name, privilege_type\n            FROM information_schema.role_table_grants\n            WHERE grantee = 'PUBLIC'\n            AND table_schema = 'public'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "grantee",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "table_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 2,
+        "name": "privilege_type",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7a6f03a87ac4c7fe4bd5e64b645cfe73557651690f2db2f599a4dfad6b3807ba"
+}

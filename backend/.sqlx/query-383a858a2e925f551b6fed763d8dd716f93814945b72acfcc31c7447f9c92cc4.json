@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT setting FROM pg_settings WHERE name = 'ssl'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "setting",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "383a858a2e925f551b6fed763d8dd716f93814945b72acfcc31c7447f9c92cc4"
+}

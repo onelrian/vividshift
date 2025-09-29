@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                state,\n                COUNT(*) as count\n            FROM pg_stat_activity \n            WHERE datname = current_database()\n            GROUP BY state\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "463f5e578961c80149fc47b5f611d9a6008f82542bca7c0cac50ecfe21d52a8a"
+}

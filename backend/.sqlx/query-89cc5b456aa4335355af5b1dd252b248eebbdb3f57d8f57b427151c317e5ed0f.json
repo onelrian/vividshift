@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                pg_database_size(current_database()) as db_size,\n                (SELECT COUNT(*) FROM pg_stat_user_tables) as table_count\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "db_size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "table_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "89cc5b456aa4335355af5b1dd252b248eebbdb3f57d8f57b427151c317e5ed0f"
+}
