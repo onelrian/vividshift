@@ -1,6 +1,7 @@
 mod api;
 mod auth;
 mod config;
+mod database;
 mod engines;
 mod models;
 mod services;
@@ -19,6 +20,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::{
     auth::{jwt::JwtService, middleware::auth_middleware, AuthState},
     config::AppConfig,
+    database::{DatabaseManager, RepositoryManager, SeedManager, run_migrations, health_check},
     engines::{
         assignment::BalancedRotationStrategy,
         validation::{AvailabilityCheckValidator, CapacityCheckValidator},
@@ -46,7 +48,37 @@ async fn main() -> Result<()> {
         return Err(anyhow::anyhow!("Invalid domain configuration: {}", e));
     }
 
-    // Initialize entity manager
+    // Initialize database connection
+    tracing::info!("🗄️  Initializing database connection...");
+    let db_manager = Arc::new(DatabaseManager::new(&config.database).await?);
+    
+    // Run database migrations
+    if let Err(e) = run_migrations(db_manager.pool()).await {
+        tracing::error!("Database migration failed: {}", e);
+        return Err(e);
+    }
+    
+    // Perform database health check
+    if let Err(e) = health_check(db_manager.pool()).await {
+        tracing::error!("Database health check failed: {}", e);
+        return Err(e);
+    }
+
+    // Initialize repository manager
+    let repo_manager = Arc::new(RepositoryManager::new(db_manager.pool_clone()));
+
+    // Seed database in development environment
+    if config.is_development() {
+        tracing::info!("🌱 Seeding database with sample data...");
+        let seed_manager = SeedManager::new((*repo_manager).clone(), db_manager.pool_clone());
+        if let Err(e) = seed_manager.seed_all(false).await {
+            tracing::warn!("Database seeding failed: {}", e);
+        } else {
+            tracing::info!("✅ Database seeding completed");
+        }
+    }
+
+    // Initialize entity manager (keeping for backward compatibility)
     let entity_manager = Arc::new(EntityManager::new(config.domain.clone()));
     
     // Load default data
@@ -75,7 +107,7 @@ async fn main() -> Result<()> {
     let auth_state = AuthState { jwt_service };
 
     // Create router
-    let app = create_app(config.clone(), auth_state, entity_manager, rule_engine).await?;
+    let app = create_app(config.clone(), auth_state, entity_manager, rule_engine, repo_manager, db_manager.clone()).await?;
 
     // Start server
     let listener = TcpListener::bind(format!("{}:{}", config.server.host, config.server.port)).await?;
@@ -93,6 +125,8 @@ async fn create_app(
     auth_state: AuthState,
     entity_manager: Arc<EntityManager>,
     rule_engine: Arc<RuleEngine>,
+    repo_manager: Arc<RepositoryManager>,
+    db_manager: Arc<DatabaseManager>,
 ) -> Result<Router> {
     // Create the main router with public routes
     let public_router = api::create_router(

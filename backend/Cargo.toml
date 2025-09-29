@@ -24,7 +24,8 @@ bcrypt = "0.15"
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "migrate", "ipnetwork"] }
+url = "2.4"
 
 # Logging & Monitoring
 tracing = "0.1"
@@ -50,8 +51,18 @@ async-trait = "0.1"
 # Random number generation
 rand = "0.8.5"
 
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Observability
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+
 [dev-dependencies]
 # Testing
 tokio-test = "0.4"
 tower = { version = "0.4", features = ["util"] }
 axum-test = "15.0"
+testcontainers = "0.15"
+testcontainers-modules = { version = "0.3", features = ["postgres"] }
+tempfile = "3.8"
