@@ -3,7 +3,9 @@
 name: Build and Deploy Docker Container
 
 on:
-  
+  push:
+    branches:
+      - main
   workflow_dispatch:
   schedule:
     - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
@@ -14,8 +16,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -26,9 +30,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+      
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
+      
       - name: Run Docker Container and Capture Output
         run: |
           docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
@@ -38,6 +44,7 @@ jobs:
             echo "❌ Error: output.txt is empty! Exiting."
             exit 1
           fi
+      
       - name: Commit updated assignment history
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -46,6 +53,7 @@ jobs:
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
           commit_author: "GitHub Actions Bot <actions@github.com>"
+      
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -64,43 +72,47 @@ jobs:
           path: .
       
       - name: Format and Send Discord Notification
-        # This single, unified step prevents errors from passing data between steps.
         run: |
           # Filter for only the assignment lines
-          grep '➡️' output.txt > formatted_output.txt
+          grep '➡️' output.txt > formatted_output.txt || true
           
-          # Start building the JSON array for the fields
+          # Build fields JSON
           FIELDS_JSON=""
           while IFS= read -r line; do
+            # Extract key/value
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
             case "$key" in
-              "Tank")      icon="🛢️";;
-              "Bin")       icon="🗑️";;
-              "Frontyard") icon="🚪";;
-              "Toilet A")  icon="🚻";;
-              "Toilet B")  icon="🚻";;
-              "Backyard")  icon="🏡";;
-              "Parlor")    icon="🛋️";;
-              *)           icon="🔹";;
+              "Tank")      icon="🛢️" ;;
+              "Bin")       icon="🗑️" ;;
+              "Frontyard") icon="🚪" ;;
+              "Toilet A")  icon="🚻" ;;
+              "Toilet B")  icon="🚻" ;;
+              "Backyard")  icon="🏡" ;;
+              "Parlor")    icon="🛋️" ;;
+              *)           icon="🔹" ;;
             esac
 
-            # Use jq to safely create a JSON object for this field
-            # and append it to our string, separated by commas.
+            # Create JSON object for this field
             FIELD=$(jq -n --arg name "$icon $key" --arg value "Assigned: $value" \
               '{name: $name, value: $value, inline: false}')
+            
+            # Append with comma; will remove trailing comma later
             FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
           
-          # Remove the trailing comma and wrap in brackets to form a valid array
-          FIELDS_JSON="[${FIELDS_JSON%,}]"
+          # If no lines matched (so FIELDS_JSON is empty), set to empty array
+          if [ -z "$FIELDS_JSON" ]; then
+            FIELDS_JSON="[]"
+          else
+            FIELDS_JSON="[${FIELDS_JSON%,}]"
+          fi
           
-          # Get the current timestamp in ISO 8601 format
+          # Timestamp
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Use jq to construct the final, complex embed object.
-          # We now pass the FIELDS_JSON string as a shell variable directly into one jq command.
+          # Build payload
           jq -n \
             --argjson fields "$FIELDS_JSON" \
             --arg timestamp "$TIMESTAMP" \
@@ -114,12 +126,12 @@ jobs:
                 }
               ]
             }' > discord_payload.json
-            
+          
           echo "--- Generated Payload ---"
           cat discord_payload.json
-          echo "-----------------------"
+          echo "-------------------------"
           
-          # Send the payload to Discord
+          # Send to Discord
           curl -X POST -H "Content-Type: application/json" \
             --fail --silent --show-error \
             -d @discord_payload.json \
