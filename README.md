@@ -141,9 +141,19 @@ Access monitoring interfaces:
 
 ## Documentation
 
-- [API Documentation](docs/API_DOCUMENTATION.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [User Manual](docs/USER_MANUAL.md)
+📚 **Complete documentation is available in the [docs/](docs/) folder:**
+
+- **[Getting Started](docs/GETTING_STARTED.md)** - Quick setup and first steps
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API documentation
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Environment and application configuration
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design and components
+- **[Database Documentation](docs/database/README.md)** - Database design and operations
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment procedures
+- **[Security Guide](docs/SECURITY.md)** - Security implementation and best practices
+- **[Development Guide](docs/DEVELOPMENT.md)** - Local development and contribution guidelines
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+For a complete overview, see the **[Documentation Index](docs/README.md)**.
 
 ## License
 
