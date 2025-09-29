@@ -3,29 +3,23 @@
 name: Build and Deploy Docker Container
 
 on:
-  
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
   schedule:
-    - cron: '0 10 * * 1' # Every Monday at 10 AM UTC (fortnightly with conditional check)
+    - cron: '0 10 */14 * *'  # Runs every 14 days at 10 AM UTC
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if fortnightly run is due
-        run: |
-          # Calculate week number since epoch (Jan 1, 1970)
-          WEEK_NUM=$(( $(date +%s) / 604800 ))
-          # Only run on even weeks (every 2 weeks)
-          if [ $(( WEEK_NUM % 2 )) -ne 0 ]; then
-            echo "Skipping run - not a fortnightly week (week $WEEK_NUM)"
-            exit 0
-          fi
-          echo "Proceeding with fortnightly run (week $WEEK_NUM)"
       - name: Checkout repository
         uses: actions/checkout@v4
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -36,9 +30,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+      
       - name: Build Docker Image
         run: |
           docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
+      
       - name: Run Docker Container and Capture Output
         run: |
           docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
@@ -48,43 +44,16 @@ jobs:
             echo "❌ Error: output.txt is empty! Exiting."
             exit 1
           fi
-      - name: Safely commit and push assignment history
-        run: |
-          # Configure git
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          
-          # Check if there are changes to commit
-          if git diff --quiet assignment_history.json; then
-            echo "No changes to assignment_history.json, skipping commit"
-            exit 0
-          fi
-          
-          # Fetch latest changes
-          git fetch origin main
-          
-          # Try to rebase on latest main
-          git rebase origin/main || {
-            echo "Rebase failed, trying merge strategy"
-            git rebase --abort
-            git merge origin/main -m "Merge latest changes before updating assignment history"
-          }
-          
-          # Stage and commit changes
-          git add assignment_history.json
-          git commit -m "chore: Update assignment history [skip ci]"
-          
-          # Push with retry mechanism
-          for i in {1..3}; do
-            if git push origin main; then
-              echo "Successfully pushed on attempt $i"
-              break
-            else
-              echo "Push failed on attempt $i, retrying..."
-              git pull --rebase origin main
-              sleep 2
-            fi
-          done
+      
+      - name: Commit updated assignment history
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: Update assignment history [skip ci]"
+          file_pattern: assignment_history.json
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions Bot <actions@github.com>"
+      
       - name: Upload Output as Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -103,43 +72,38 @@ jobs:
           path: .
       
       - name: Format and Send Discord Notification
-        # This single, unified step prevents errors from passing data between steps.
         run: |
-          # Filter for only the assignment lines
-          grep '➡️' output.txt > formatted_output.txt
+          grep '➡️' output.txt > formatted_output.txt || true
           
-          # Start building the JSON array for the fields
           FIELDS_JSON=""
           while IFS= read -r line; do
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
             case "$key" in
-              "Tank")      icon="🛢️";;
-              "Bin")       icon="🗑️";;
-              "Frontyard") icon="🚪";;
-              "Toilet A")  icon="🚻";;
-              "Toilet B")  icon="🚻";;
-              "Backyard")  icon="🏡";;
-              "Parlor")    icon="🛋️";;
-              *)           icon="🔹";;
+              "Tank")      icon="🛢️" ;;
+              "Bin")       icon="🗑️" ;;
+              "Frontyard") icon="🚪" ;;
+              "Toilet A")  icon="🚻" ;;
+              "Toilet B")  icon="🚻" ;;
+              "Backyard")  icon="🏡" ;;
+              "Parlor")    icon="🛋️" ;;
+              *)           icon="🔹" ;;
             esac
 
-            # Use jq to safely create a JSON object for this field
-            # and append it to our string, separated by commas.
             FIELD=$(jq -n --arg name "$icon $key" --arg value "Assigned: $value" \
               '{name: $name, value: $value, inline: false}')
             FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
           
-          # Remove the trailing comma and wrap in brackets to form a valid array
-          FIELDS_JSON="[${FIELDS_JSON%,}]"
+          if [ -z "$FIELDS_JSON" ]; then
+            FIELDS_JSON="[]"
+          else
+            FIELDS_JSON="[${FIELDS_JSON%,}]"
+          fi
           
-          # Get the current timestamp in ISO 8601 format
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Use jq to construct the final, complex embed object.
-          # We now pass the FIELDS_JSON string as a shell variable directly into one jq command.
           jq -n \
             --argjson fields "$FIELDS_JSON" \
             --arg timestamp "$TIMESTAMP" \
@@ -153,12 +117,11 @@ jobs:
                 }
               ]
             }' > discord_payload.json
-            
+          
           echo "--- Generated Payload ---"
           cat discord_payload.json
-          echo "-----------------------"
+          echo "-------------------------"
           
-          # Send the payload to Discord
           curl -X POST -H "Content-Type: application/json" \
             --fail --silent --show-error \
             -d @discord_payload.json \
