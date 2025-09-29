@@ -35,8 +35,8 @@ To run the program:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/work-group-distributor.git
-   cd work-group-distributor
+   git clone https://github.com/onelrian/VividShift.git
+   cd VividShift
    ```
 
 2. Build and run the application using Cargo:

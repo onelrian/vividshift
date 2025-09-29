@@ -3,12 +3,12 @@
 name: Build and Deploy Docker Container
 
 on:
-  push:
+  pull_request:
     branches:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 10 */14 * *' # Runs every 14 days at 10 AM UTC
+    - cron: '0 10 */14 * *'  # Runs every 14 days at 10 AM UTC
 
 jobs:
   build-and-run:
@@ -73,13 +73,10 @@ jobs:
       
       - name: Format and Send Discord Notification
         run: |
-          # Filter for only the assignment lines
           grep '➡️' output.txt > formatted_output.txt || true
           
-          # Build fields JSON
           FIELDS_JSON=""
           while IFS= read -r line; do
-            # Extract key/value
             key=$(echo "$line" | awk -F':' '{print $1}' | sed 's/➡️//' | xargs)
             value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | xargs)
             
@@ -94,25 +91,19 @@ jobs:
               *)           icon="🔹" ;;
             esac
 
-            # Create JSON object for this field
             FIELD=$(jq -n --arg name "$icon $key" --arg value "Assigned: $value" \
               '{name: $name, value: $value, inline: false}')
-            
-            # Append with comma; will remove trailing comma later
             FIELDS_JSON+="$FIELD,"
           done < formatted_output.txt
           
-          # If no lines matched (so FIELDS_JSON is empty), set to empty array
           if [ -z "$FIELDS_JSON" ]; then
             FIELDS_JSON="[]"
           else
             FIELDS_JSON="[${FIELDS_JSON%,}]"
           fi
           
-          # Timestamp
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Build payload
           jq -n \
             --argjson fields "$FIELDS_JSON" \
             --arg timestamp "$TIMESTAMP" \
@@ -131,7 +122,6 @@ jobs:
           cat discord_payload.json
           echo "-------------------------"
           
-          # Send to Discord
           curl -X POST -H "Content-Type: application/json" \
             --fail --silent --show-error \
             -d @discord_payload.json \
