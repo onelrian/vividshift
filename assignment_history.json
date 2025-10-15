@@ -1,76 +1,76 @@
 {
   "assignments": {
-    "Maxwell": [
-      "Parlor",
-      "Tank"
+    "Frank": [
+      "Frontyard",
+      "Toilet A"
     ],
     "Derick": [
-      "Tank",
-      "Frontyard"
-    ],
-    "Nathan": [
       "Toilet A",
-      "Bin"
+      "Tank"
     ],
-    "Vitalis": [
-      "Toilet B",
-      "Parlor"
-    ],
-    "Frank": [
+    "Maxwell": [
       "Toilet A",
       "Parlor"
-    ],
-    "Christian": [
-      "Parlor",
-      "Backyard"
     ],
     "Richmond": [
-      "Frontyard",
+      "Parlor",
+      "Frontyard"
+    ],
+    "Prosper": [
+      "Bin",
+      "Frontyard"
+    ],
+    "Desmond": [
+      "Backyard",
       "Toilet B"
     ],
-    "Severian": [
+    "Junine": [
+      "Tank",
+      "Parlor"
+    ],
+    "Usher": [
+      "Toilet B",
+      "Tank"
+    ],
+    "Nathan": [
       "Parlor",
       "Toilet A"
     ],
     "Mark": [
-      "Toilet B",
-      "Tank"
-    ],
-    "Ghislain": [
-      "Toilet B",
-      "Frontyard"
-    ],
-    "Emmanuel": [
       "Parlor",
       "Toilet B"
     ],
-    "Prosper": [
-      "Frontyard",
+    "Emmanuel": [
+      "Toilet B",
       "Parlor"
     ],
+    "Romeo": [
+      "Toilet B",
+      "Frontyard"
+    ],
     "Michael": [
-      "Bin",
+      "Frontyard",
+      "Bin"
+    ],
+    "Christian": [
+      "Toilet B",
       "Parlor"
     ],
     "Onel": [
-      "Backyard",
-      "Toilet A"
+      "Parlor",
+      "Backyard"
     ],
-    "Desmond": [
-      "Toilet B",
-      "Parlor"
-    ],
-    "Usher": [
-      "Tank",
+    "Ghislain": [
+      "Parlor",
       "Toilet B"
     ],
-    "Junine": [
-      "Parlor",
-      "Frontyard"
-    ],
-    "Romeo": [
+    "Vitalis": [
       "Frontyard",
       "Toilet B"
+    ],
+    "Severian": [
+      "Tank",
+      "Parlor"
     ]
   }
 }
