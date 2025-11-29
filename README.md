@@ -1,88 +1,226 @@
-# Work Group Distributor
+# VividShift - Automated Work Group Distributor
 
-This repository contains a Rust application that reads two lists of names from text files, randomly distributes work assignments, and prints the results in a formatted output.
+A Rust-based application that automatically distributes household chores among residents every two weeks. The system uses a PostgreSQL database to track people and assignment history, ensuring fair rotation and preventing repetitive assignments.
+
+## Features
+
+- **Automated Scheduling**: Runs daily via GitHub Actions but only generates assignments every 14 days
+- **Fair Rotation**: Tracks assignment history to ensure people don't get the same tasks repeatedly
+- **Group-Based Constraints**: Enforces rules based on group membership (Group A vs Group B)
+- **Discord Integration**: Automatically posts new assignments to Discord when generated
+- **Database-Backed**: Uses Neon PostgreSQL for persistent state management
+- **Stateless Execution**: Perfect for CI/CD environments
+
+## Architecture
+
+The application follows a stateless architecture where all state is stored in a PostgreSQL database. For a detailed explanation of the system architecture, including diagrams and data flow, see [docs/architecture.md](docs/architecture.md).
+
+### High-Level Flow
+
+1. **Daily Check**: GitHub Actions runs the application daily at 9 AM UTC
+2. **14-Day Rule**: The app checks if 14 days have passed since the last assignment
+3. **Assignment Generation**: If eligible, generates new fair work distributions
+4. **Discord Notification**: Posts results to Discord (only when new assignments are made)
 
 ## Setup
 
-### 1. Install Rust
+### Prerequisites
 
-If you haven't installed Rust yet, you can install it by following the instructions at [rust-lang.org](https://www.rust-lang.org/learn/get-started).
+- Rust (latest stable version)
+- PostgreSQL database (we recommend [Neon](https://neon.tech))
+- Diesel CLI: `cargo install diesel_cli --no-default-features --features postgres`
 
-### 2. Create the Input Files
+### 1. Clone the Repository
 
-Create two text files, `file_a.txt` and `file_b.txt`, in the root directory of the repository. Each file should contain a list of names, one per line.
-
-Example of `file_a.txt`:
-
-```txt
-Alice
-Bob
-Charlie
+```bash
+git clone https://github.com/onelrian/VividShift.git
+cd VividShift
 ```
 
-Example of `file_b.txt`:
+### 2. Configure Environment
 
-```txt
-David
-Eve
-Frank
+Create a `.env` file in the project root:
+
+```bash
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+RUST_LOG=info
 ```
 
-### 3. Running the Program
+### 3. Run Migrations
 
-To run the program:
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/onelrian/VividShift.git
-   cd VividShift
-   ```
-
-2. Build and run the application using Cargo:
-
-   ```bash
-   cargo run
-   ```
-
-The program will read the names from `file_a.txt` and `file_b.txt`, distribute the work assignments, and print the result in the following format:
-
-### Example Output
-
-```
-**📊 Work Distribution Results**
-
-**Toilet A**: Alice, Bob
-**Toilet B**: David, Eve
-**Parlor**: Charlie, Frank
-**Frontyard**: Alice, Eve, Frank, Bob
-**Backyard**: Charlie
-**Tank**: Alice, David
-**Toilet B**: Eve, Frank, David
-**Bin**: Charlie
+```bash
+diesel migration run
 ```
 
-## How to Customize
+This will:
+- Create the `people` and `assignments` tables
+- Seed initial data from legacy files (if present)
+
+### 4. Run the Application
+
+```bash
+cargo run
+```
+
+## Database Schema
+
+### `people` Table
+Stores resident information and group assignments.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| name | TEXT | Person's name |
+| group_type | TEXT | 'A' or 'B' |
+| active | BOOLEAN | Active status |
+
+### `assignments` Table
+Tracks assignment history for rotation logic.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| person_id | INTEGER | Foreign key to people |
+| task_name | TEXT | Assigned task |
+| assigned_at | TIMESTAMP | Assignment date |
+
+## GitHub Actions Setup
+
+### Required Secrets
+
+Configure these in your GitHub repository settings:
+
+- `DATABASE_URL`: Your Neon PostgreSQL connection string
+- `DISCORD_WEBHOOK`: Discord webhook URL for notifications
+
+### Workflow
+
+The workflow runs daily but only sends notifications when new assignments are generated:
+
+```yaml
+schedule:
+  - cron: '0 9 * * *'  # Daily at 9 AM UTC
+```
+
+The Rust application enforces the 14-day interval internally.
+
+## Customization
 
 ### Modifying Work Assignments
 
-You can change the number of people assigned to each task by modifying the `work_assignments` array in `group.rs`. The format for each entry is:
+Edit the `work_assignments` HashMap in `src/main.rs`:
 
 ```rust
-("Task Name", number_of_people)
+let work_assignments: HashMap<String, usize> = [
+    ("Parlor".to_string(), 5),
+    ("Frontyard".to_string(), 3),
+    ("Backyard".to_string(), 1),
+    ("Tank".to_string(), 2),
+    ("Toilet B".to_string(), 4),
+    ("Toilet A".to_string(), 2),
+    ("Bin".to_string(), 1),
+]
+.into_iter()
+.collect();
 ```
 
-For example, to change the number of people assigned to `Parlor`, modify the entry like this:
+### Adding/Removing People
+
+Insert or update records in the `people` table:
+
+```sql
+-- Add a new person to Group A
+INSERT INTO people (name, group_type, active) VALUES ('John', 'A', true);
+
+-- Deactivate a person
+UPDATE people SET active = false WHERE name = 'John';
+```
+
+### Changing Constraints
+
+Modify the eligibility logic in `src/group.rs`:
 
 ```rust
-("Parlor", 3),  // Assign 3 people instead of 4
+// Example: Group B restriction for Toilet A
+let is_from_b_in_toilet_a = *area == "Toilet A" && names_b_set.contains(person);
 ```
 
-### Changing the Input Files
+## Testing
 
-If you want to use different files or modify the structure of your input files, make sure to update the `read_names_from_file` function in `files.rs` to handle the changes accordingly.
+Run the test suite:
 
-### Modifying Output Format
+```bash
+cargo test
+```
 
-The output format can be changed in the `print_assignments` function in `output.rs`. This function prints the assignments in a simple format, but you can modify it to match any structure you prefer.
+Tests cover:
+- Assignment distribution logic
+- Constraint enforcement
+- Edge cases (insufficient people, etc.)
 
+## Development
+
+### Project Structure
+
+```
+vividshift/
+├── src/
+│   ├── main.rs          # Entry point, schedule checking
+│   ├── db.rs            # Database operations
+│   ├── group.rs         # Assignment algorithm
+│   ├── models.rs        # Diesel ORM models
+│   ├── schema.rs        # Database schema
+│   └── output.rs        # Formatting utilities
+├── migrations/          # Diesel migrations
+├── docs/
+│   └── architecture.md  # Detailed architecture docs
+└── .github/workflows/
+    └── worker.yml       # GitHub Actions workflow
+```
+
+### Running Locally
+
+```bash
+# Build
+cargo build
+
+# Run with database check
+cargo run
+
+# Run tests
+cargo test
+
+# Format code
+cargo fmt
+```
+
+## Troubleshooting
+
+### "Could not find a valid assignment after 50 attempts"
+
+This error occurs when the constraints are too restrictive. Possible solutions:
+- Check that you have enough people for all tasks
+- Review the assignment history (people might be blocked from all available tasks)
+- Consider adjusting the `HISTORY_LENGTH` in `src/db.rs`
+
+### "Failed to get DB connection"
+
+Ensure:
+- Your `DATABASE_URL` is correct in `.env`
+- The database is accessible from your network
+- Migrations have been run successfully
+
+### Discord notifications not sent
+
+Check:
+- The `SHOULD_NOTIFY` environment variable is set to `true` (only happens when assignments are generated)
+- Your `DISCORD_WEBHOOK` secret is configured correctly
+- The workflow has the necessary permissions
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

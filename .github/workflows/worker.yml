@@ -1,24 +1,18 @@
-# .github/workflows/main.yml
-
-name: Build and Deploy Docker Container
+name: Bi-Weekly Work Generator
 
 on:
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
   schedule:
-    - cron: '0 10 */14 * *'  # Runs every 14 days at 10 AM UTC
+    - cron: '0 9 * * *' # Run every day to check eligibility
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
-  build-and-run:
+  run-generator:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
       
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -30,48 +24,20 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      
-      - name: Build Docker Image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}/work-group-generator:latest .
-      
-      - name: Run Docker Container and Capture Output
-        run: |
-          docker run --rm -v "$(pwd):/app" -w /app ghcr.io/${{ github.repository }}/work-group-generator:latest > output.txt
-          echo "🔍 Checking output.txt:"
-          cat output.txt || echo "⚠️ No content in output.txt"
-          if [ ! -s output.txt ]; then
-            echo "❌ Error: output.txt is empty! Exiting."
-            exit 1
-          fi
-      
-      - name: Commit updated assignment history
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: Update assignment history [skip ci]"
-          file_pattern: assignment_history.json
-          commit_user_name: "GitHub Actions Bot"
-          commit_user_email: "actions@github.com"
-          commit_author: "GitHub Actions Bot <actions@github.com>"
-      
-      - name: Upload Output as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: work-output
-          path: output.txt
-          retention-days: 1
 
-  send-to-discord:
-    needs: build-and-run
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Output Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: work-output
-          path: .
-      
+      - name: Build and Run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # The Rust app itself will handle the "check date" logic.
+          # It will also set SHOULD_NOTIFY=true/false in GITHUB_ENV.
+          cargo run --release > output.txt
+          cat output.txt
+
       - name: Format and Send Discord Notification
+        if: success() && env.SHOULD_NOTIFY == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           grep '➡️' output.txt > formatted_output.txt || true
           
@@ -97,11 +63,11 @@ jobs:
           done < formatted_output.txt
           
           if [ -z "$FIELDS_JSON" ]; then
-            FIELDS_JSON="[]"
-          else
-            FIELDS_JSON="[${FIELDS_JSON%,}]"
+            echo "No fields parsed. Exiting."
+            exit 0
           fi
           
+          FIELDS_JSON="[${FIELDS_JSON%,}]"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           jq -n \
@@ -118,11 +84,7 @@ jobs:
               ]
             }' > discord_payload.json
           
-          echo "--- Generated Payload ---"
-          cat discord_payload.json
-          echo "-------------------------"
-          
           curl -X POST -H "Content-Type: application/json" \
             --fail --silent --show-error \
             -d @discord_payload.json \
-            ${{ secrets.DISCORD_WEBHOOK }}
+            $DISCORD_WEBHOOK
