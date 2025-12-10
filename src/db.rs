@@ -95,7 +95,7 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
             println!("Days Now: {} ", now );
             println!("Days Date: {} ", date );
             println!("Days Left: {} ", days_diff );
-            Ok(days_diff >= )
+            Ok(days_diff >= 14 )
         }
         None => Ok(true), // No history, so we should run
     }
