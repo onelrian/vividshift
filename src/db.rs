@@ -93,6 +93,9 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
             let now = Utc::now().naive_utc();
             let days_diff = (now - date).num_days();
             Ok(days_diff >= 14)
+            println!("Days Now: {} ", now );
+            println!("Days Date: {} ", date );
+            println!("Days Left: {} ", days_diff );
         }
         None => Ok(true), // No history, so we should run
     }
