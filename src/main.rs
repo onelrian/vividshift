@@ -73,7 +73,7 @@ fn main() {
     // 4. Generate Assignments
     println!("🔄 Generating new work distribution...");
     let mut final_assignments = None;
-    const MAX_ATTEMPTS: u32 = 50;
+    const MAX_ATTEMPTS: u32 = 500;
 
     for attempt in 1..=MAX_ATTEMPTS {
         match group::distribute_work(&names_a, &names_b, &work_assignments, &history) {
