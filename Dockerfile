@@ -4,7 +4,7 @@ FROM rust:latest AS builder
 
 # Install dependencies for static linking
 WORKDIR /app
-RUN apt-get update && apt-get install -y musl-tools && rustup target add x86_64-unknown-linux-musl
+RUN apt-get update && apt-get install -y musl-tools libpq-dev pkg-config && rustup target add x86_64-unknown-linux-musl
 
 # Copy the source code and build the application
 COPY . .

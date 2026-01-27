@@ -1,1 +1,7 @@
-target/
+/target/
+config/people.toml
+
+.mcp/
+logs/
+*.log
+AI_SESSION_PROMPT.md
