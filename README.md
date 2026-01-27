@@ -125,15 +125,16 @@ let work_assignments: HashMap<String, usize> = [
 ```
 
 ### Adding/Removing People
-
-Insert or update records in the `people` table:
-
-```sql
--- Add a new person to Group A
-INSERT INTO people (name, group_type, active) VALUES ('John', 'A', true);
-
--- Deactivate a person
-UPDATE people SET active = false WHERE name = 'John';
+ 
+1.  Edit `config/people.toml` (or `people.example.toml` in new envs).
+2.  Add/remove `[[person]]` blocks.
+3.  Set `active = false` to temporarily remove someone from rotation.
+ 
+```toml
+[[person]]
+name = "John"
+group = "A"
+active = true
 ```
 
 ### Changing Constraints
