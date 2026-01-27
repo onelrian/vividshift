@@ -3,6 +3,7 @@ mod db;
 mod group;
 mod models;
 mod output;
+mod people_config;
 mod schema;
 
 use anyhow::Context;
@@ -67,7 +68,8 @@ fn main() -> anyhow::Result<()> {
     info!("📋 Work assignments loaded: {:?}", work_areas.keys());
 
     // 5. Fetch People
-    let (names_a, names_b, name_to_id) = db::fetch_people(&mut conn).context("Failed to fetch people")?;
+    let (names_a, names_b, name_to_id) =
+        db::fetch_people(&mut conn).context("Failed to fetch people")?;
     info!(
         "👥 Fetched {} active people (Group A: {}, Group B: {})",
         names_a.len() + names_b.len(),
@@ -87,7 +89,10 @@ fn main() -> anyhow::Result<()> {
     for attempt in 1..=MAX_ATTEMPTS {
         match group::distribute_work(&names_a, &names_b, work_areas, &history) {
             Ok(new_assignments) => {
-                info!("✅ Successfully found a valid assignment on attempt {}!", attempt);
+                info!(
+                    "✅ Successfully found a valid assignment on attempt {}!",
+                    attempt
+                );
                 final_assignments = Some(new_assignments);
                 break;
             }
@@ -99,7 +104,10 @@ fn main() -> anyhow::Result<()> {
     if let Some(assignments) = final_assignments {
         output::print_assignments(&assignments);
         if let Err(e) = db::save_assignments(&mut conn, &assignments, &name_to_id) {
-            error!("🔥 CRITICAL ERROR: Failed to save new assignments to DB: {}", e);
+            error!(
+                "🔥 CRITICAL ERROR: Failed to save new assignments to DB: {}",
+                e
+            );
             set_github_output(false, settings.github_env_path.as_deref());
             return Err(anyhow::anyhow!("Failed to save assignments: {}", e));
         } else {
@@ -107,9 +115,15 @@ fn main() -> anyhow::Result<()> {
             set_github_output(true, settings.github_env_path.as_deref());
         }
     } else {
-        error!("🔥 CRITICAL ERROR: Could not find a valid assignment after {} attempts.", MAX_ATTEMPTS);
+        error!(
+            "🔥 CRITICAL ERROR: Could not find a valid assignment after {} attempts.",
+            MAX_ATTEMPTS
+        );
         set_github_output(false, settings.github_env_path.as_deref());
-        anyhow::bail!("Could not find a valid assignment after {} attempts.", MAX_ATTEMPTS);
+        anyhow::bail!(
+            "Could not find a valid assignment after {} attempts.",
+            MAX_ATTEMPTS
+        );
     }
 
     info!("🎉 Done.");

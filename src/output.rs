@@ -6,7 +6,7 @@ use tracing::info;
 /// Prints the assignments in a clean, formatted way.
 pub fn print_assignments(assignments: &HashMap<String, Vec<String>>) {
     info!("📊 Work Distribution Results");
-    
+
     let mut sorted_areas: Vec<_> = assignments.keys().collect();
     sorted_areas.sort();
 

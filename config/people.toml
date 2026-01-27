@@ -1,0 +1,136 @@
+# VividShift People Configuration
+# =================================
+# This file defines all residents and their group assignments for the VividShift
+# work group distribution system.
+#
+# Schema:
+# - [groups.<name>]: Group definitions with metadata
+#   - description: Human-readable description
+#   - constraints: List of constraint identifiers
+#
+# - [[person]]: Individual resident records
+#   - name: Full name (must be unique)
+#   - group: Reference to a defined group (must exist)
+#   - active: Whether the person is currently participating (true/false)
+#
+# Adding/Removing People:
+# - To add: Copy a [[person]] block and update name/group/active
+# - To deactivate: Set active = false (keeps history)
+# - To add a new group: Add [groups.<name>] section and update constraint logic
+#
+# Validation Rules:
+# - Names must be unique across all people
+# - Groups must be defined before being referenced
+# - At least one active person required per group
+
+# =============================================================================
+# Group Definitions
+# =============================================================================
+
+[groups.A]
+description = "Group A residents - Primary household members"
+constraints = ["cannot_perform_toilet_b"]
+
+[groups.B]
+description = "Group B residents - Secondary household members"
+constraints = ["cannot_perform_toilet_a"]
+
+# =============================================================================
+# People (18 total: 8 in Group A, 10 in Group B)
+# =============================================================================
+
+# Group A Members (8 people)
+# -----------------------------------------------------------------------------
+
+[[person]]
+name = "Onel"
+group = "A"
+active = true
+
+[[person]]
+name = "Prosper"
+group = "A"
+active = true
+
+[[person]]
+name = "Derick"
+group = "A"
+active = true
+
+[[person]]
+name = "Nathan"
+group = "A"
+active = true
+
+[[person]]
+name = "Junine"
+group = "A"
+active = true
+
+[[person]]
+name = "Maxwell"
+group = "A"
+active = true
+
+[[person]]
+name = "Severian"
+group = "A"
+active = true
+
+[[person]]
+name = "Frank"
+group = "A"
+active = true
+
+# Group B Members (10 people)
+# -----------------------------------------------------------------------------
+
+[[person]]
+name = "Emmanuel"
+group = "B"
+active = true
+
+[[person]]
+name = "Romeo"
+group = "B"
+active = true
+
+[[person]]
+name = "Ghislain"
+group = "B"
+active = true
+
+[[person]]
+name = "Vitalis"
+group = "B"
+active = true
+
+[[person]]
+name = "Richmond"
+group = "B"
+active = true
+
+[[person]]
+name = "Christian"
+group = "B"
+active = true
+
+[[person]]
+name = "Michael"
+group = "B"
+active = true
+
+[[person]]
+name = "Mark"
+group = "B"
+active = true
+
+[[person]]
+name = "Usher"
+group = "B"
+active = true
+
+[[person]]
+name = "Desmond"
+group = "B"
+active = true

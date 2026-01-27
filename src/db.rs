@@ -18,25 +18,63 @@ pub fn establish_connection(database_url: &str) -> DbPool {
 }
 
 /// Fetches all active people from the database, separated by group.
+/// Uses people.toml as the source of truth for group membership and active status.
 pub fn fetch_people(
     conn: &mut PgConnection,
 ) -> QueryResult<(Vec<String>, Vec<String>, HashMap<String, i32>)> {
-    let all_people = people_dsl::people
-        .filter(people_dsl::active.eq(true))
-        .load::<Person>(conn)?;
+    use crate::people_config::PeopleConfiguration;
+    use tracing::warn;
+
+    // Load configuration from people.toml
+    let config = PeopleConfiguration::load().map_err(|e| {
+        diesel::result::Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new(format!("Failed to load people configuration: {}", e)),
+        )
+    })?;
+
+    // Fetch all people from database to get their IDs
+    let all_db_people = people_dsl::people.load::<Person>(conn)?;
 
     let mut names_a = Vec::new();
     let mut names_b = Vec::new();
     let mut name_to_id = HashMap::new();
 
-    for person in all_people {
-        name_to_id.insert(person.name.clone(), person.id);
-        if person.group_type == "A" {
-            names_a.push(person.name);
+    // Build name-to-id mapping from database
+    let db_name_to_id: HashMap<String, i32> = all_db_people
+        .iter()
+        .map(|p| (p.name.clone(), p.id))
+        .collect();
+
+    // Use config as source of truth for active people and groups
+    for person_config in config.get_active_people() {
+        if let Some(&person_id) = db_name_to_id.get(&person_config.name) {
+            name_to_id.insert(person_config.name.clone(), person_id);
+
+            if person_config.group == "A" {
+                names_a.push(person_config.name.clone());
+            } else if person_config.group == "B" {
+                names_b.push(person_config.name.clone());
+            } else {
+                warn!(
+                    "Person '{}' has unknown group '{}', skipping",
+                    person_config.name, person_config.group
+                );
+            }
         } else {
-            names_b.push(person.name);
+            warn!(
+                "Person '{}' from config not found in database, skipping",
+                person_config.name
+            );
         }
     }
+
+    info!(
+        "Loaded {} people from config (Group A: {}, Group B: {})",
+        names_a.len() + names_b.len(),
+        names_a.len(),
+        names_b.len()
+    );
 
     Ok((names_a, names_b, name_to_id))
 }
@@ -88,10 +126,10 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
         Some(date) => {
             let now = Utc::now().naive_utc();
             let days_diff = (now - date).num_days();
-            info!("Days Now: {} ", now );
-            info!("Days Date: {} ", date );
-            info!("Days Left: {} ", days_diff );
-            Ok(days_diff >= 14 )
+            info!("Days Now: {} ", now);
+            info!("Days Date: {} ", date);
+            info!("Days Left: {} ", days_diff);
+            Ok(days_diff >= 14)
         }
         None => Ok(true), // No history, so we should run
     }
