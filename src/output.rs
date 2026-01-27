@@ -1,12 +1,12 @@
 // src/output.rs
 
 use std::collections::HashMap;
+use tracing::info;
 
 /// Prints the assignments in a clean, formatted way.
 pub fn print_assignments(assignments: &HashMap<String, Vec<String>>) {
-    println!("📊 Work Distribution Results");
-    println!("{:=<30}", ""); // Separator line
-
+    info!("📊 Work Distribution Results");
+    
     let mut sorted_areas: Vec<_> = assignments.keys().collect();
     sorted_areas.sort();
 
@@ -15,6 +15,6 @@ pub fn print_assignments(assignments: &HashMap<String, Vec<String>>) {
         // Sort people's names for consistent output
         let mut sorted_people = people.clone();
         sorted_people.sort();
-        println!("➡️  {:<12}: {}", area, sorted_people.join(", "));
+        info!("➡️  {:<12}: {}", area, sorted_people.join(", "));
     }
 }

@@ -1,5 +1,4 @@
-// src/group.rs
-
+use anyhow::{bail, Result};
 use rand::seq::SliceRandom;
 use std::collections::{HashMap, HashSet};
 
@@ -9,7 +8,7 @@ pub fn distribute_work(
     names_b: &[String],
     work_areas: &HashMap<String, usize>,
     history: &HashMap<String, Vec<String>>,
-) -> Result<HashMap<String, Vec<String>>, String> {
+) -> Result<HashMap<String, Vec<String>>> {
     let all_people: HashSet<String> = names_a.iter().chain(names_b.iter()).cloned().collect();
     let names_a_set: HashSet<_> = names_a.iter().cloned().collect();
     let names_b_set: HashSet<_> = names_b.iter().cloned().collect();
@@ -59,10 +58,10 @@ pub fn distribute_work(
 
         if let Some((task_name, potential_assignees)) = most_constrained_task {
             if potential_assignees.is_empty() {
-                return Err(format!(
+                bail!(
                     "could not find a valid assignment. Task '{}' needs {} more person/people, but has no eligible candidates left.",
                     task_name, work_areas[task_name] - assignments[task_name].len()
-                ));
+                );
             }
 
             let assignees_vec: Vec<_> = potential_assignees.iter().collect();

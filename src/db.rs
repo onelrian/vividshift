@@ -1,9 +1,7 @@
 use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use dotenvy::dotenv;
 use std::collections::HashMap;
-use std::env;
 
 use crate::models::*;
 use crate::schema::assignments::dsl as assignments_dsl;
@@ -11,10 +9,7 @@ use crate::schema::people::dsl as people_dsl;
 
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-pub fn establish_connection() -> DbPool {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+pub fn establish_connection(database_url: &str) -> DbPool {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     r2d2::Pool::builder()
         .build(manager)

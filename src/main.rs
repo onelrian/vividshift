@@ -1,87 +1,93 @@
+mod config;
 mod db;
 mod group;
 mod models;
 mod output;
 mod schema;
 
-use std::collections::HashMap;
+use anyhow::Context;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
+use tracing::{error, info, warn};
 
-fn set_github_output(should_notify: bool) {
-    if let Ok(github_env) = env::var("GITHUB_ENV") {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(github_env)
-            .expect("Failed to open GITHUB_ENV file");
+fn set_github_output(should_notify: bool, env_path: Option<&str>) {
+    let path = match env_path {
+        Some(p) => p.to_string(),
+        None => env::var("GITHUB_ENV").unwrap_or_default(),
+    };
 
-        writeln!(file, "SHOULD_NOTIFY={}", should_notify).expect("Failed to write to GITHUB_ENV");
-    } else {
-        println!("⚠️ GITHUB_ENV not set, skipping environment variable update.");
+    if path.is_empty() {
+        warn!("⚠️ GITHUB_ENV not set, skipping environment variable update.");
+        return;
+    }
+
+    let mut file = match OpenOptions::new().create(true).append(true).open(&path) {
+        Ok(f) => f,
+        Err(e) => {
+            error!("Failed to open GITHUB_ENV file at {}: {}", path, e);
+            return;
+        }
+    };
+
+    if let Err(e) = writeln!(file, "SHOULD_NOTIFY={}", should_notify) {
+        error!("Failed to write to GITHUB_ENV: {}", e);
     }
 }
 
-fn main() {
-    println!("🚀 Starting Work Group Generator...");
+fn main() -> anyhow::Result<()> {
+    // 1. Initialize Logging
+    tracing_subscriber::fmt::init();
+    info!("🚀 Starting Work Group Generator...");
 
-    // 1. Connect to DB
-    let pool = db::establish_connection();
-    let mut conn = pool.get().expect("Failed to get DB connection");
+    // 2. Load Configuration
+    let settings = config::Settings::new().context("Failed to load configuration")?;
+    info!("✅ Configuration loaded.");
 
-    // 2. Check Schedule (14 day rule)
+    // 3. Connect to DB
+    let pool = db::establish_connection(&settings.database_url);
+    let mut conn = pool.get().context("Failed to get DB connection")?;
+
+    // 4. Check Schedule (14 day rule)
     match db::should_run(&mut conn) {
-        Ok(true) => println!("✅ It has been 14+ days (or first run). Proceeding."),
+        Ok(true) => info!("✅ It has been 14+ days (or first run). Proceeding."),
         Ok(false) => {
-            println!("⏳ It has NOT been 14 days since the last run. Skipping.");
-            set_github_output(false);
-            return;
+            info!("⏳ It has NOT been 14 days since the last run. Skipping.");
+            set_github_output(false, settings.github_env_path.as_deref());
+            return Ok(());
         }
         Err(e) => {
-            eprintln!("🔥 Error checking schedule: {}", e);
-            set_github_output(false);
-            return;
+            error!("🔥 Error checking schedule: {}", e);
+            set_github_output(false, settings.github_env_path.as_deref());
+            return Err(anyhow::anyhow!("Error checking schedule: {}", e));
         }
     }
 
-    let work_assignments: HashMap<String, usize> = [
-        ("Parlor".to_string(), 5),
-        ("Frontyard".to_string(), 3),
-        ("Backyard".to_string(), 1),
-        ("Tank".to_string(), 2),
-        ("Toilet B".to_string(), 4),
-        ("Toilet A".to_string(), 2),
-        ("Bin".to_string(), 1),
-    ]
-    .into_iter()
-    .collect();
+    let work_areas = &settings.work_assignments;
+    info!("📋 Work assignments loaded: {:?}", work_areas.keys());
 
-    // 3. Load Data from DB
-    let (names_a, names_b, name_to_id) =
-        db::fetch_people(&mut conn).expect("Failed to fetch people");
-    println!(
-        "✅ Loaded {} names from Group A and {} names from Group B.",
+    // 5. Fetch People
+    let (names_a, names_b, name_to_id) = db::fetch_people(&mut conn).context("Failed to fetch people")?;
+    info!(
+        "👥 Fetched {} active people (Group A: {}, Group B: {})",
+        names_a.len() + names_b.len(),
         names_a.len(),
         names_b.len()
     );
 
-    println!("🔍 Reading assignment history from DB...");
-    let history =
-        db::fetch_history(&mut conn, &name_to_id).expect("Could not load assignment history");
+    // 6. Fetch History
+    info!("🔍 Reading assignment history from DB...");
+    let history = db::fetch_history(&mut conn, &name_to_id).context("Failed to fetch history")?;
 
-    // 4. Generate Assignments
-    println!("🔄 Generating new work distribution...");
+    // 7. Generate Assignments (Start Retry Loop)
+    info!("🔄 Generating new work distribution...");
     let mut final_assignments = None;
     const MAX_ATTEMPTS: u32 = 500;
 
     for attempt in 1..=MAX_ATTEMPTS {
-        match group::distribute_work(&names_a, &names_b, &work_assignments, &history) {
+        match group::distribute_work(&names_a, &names_b, work_areas, &history) {
             Ok(new_assignments) => {
-                println!(
-                    "✅ Successfully found a valid assignment on attempt {}!",
-                    attempt
-                );
+                info!("✅ Successfully found a valid assignment on attempt {}!", attempt);
                 final_assignments = Some(new_assignments);
                 break;
             }
@@ -89,25 +95,23 @@ fn main() {
         }
     }
 
-    // 5. Save and Output
+    // 8. Save and Output
     if let Some(assignments) = final_assignments {
         output::print_assignments(&assignments);
         if let Err(e) = db::save_assignments(&mut conn, &assignments, &name_to_id) {
-            eprintln!(
-                "🔥 CRITICAL ERROR: Failed to save new assignments to DB: {}",
-                e
-            );
-            set_github_output(false); // Don't notify if save failed
+            error!("🔥 CRITICAL ERROR: Failed to save new assignments to DB: {}", e);
+            set_github_output(false, settings.github_env_path.as_deref());
+            return Err(anyhow::anyhow!("Failed to save assignments: {}", e));
         } else {
-            println!("\n💾 Assignment history has been saved to the database.");
-            set_github_output(true);
+            info!("💾 Assignment history has been saved to the database.");
+            set_github_output(true, settings.github_env_path.as_deref());
         }
     } else {
-        eprintln!(
-            "🔥 CRITICAL ERROR: Could not find a valid assignment after {} attempts.",
-            MAX_ATTEMPTS
-        );
-        set_github_output(false);
-        std::process::exit(1);
+        error!("🔥 CRITICAL ERROR: Could not find a valid assignment after {} attempts.", MAX_ATTEMPTS);
+        set_github_output(false, settings.github_env_path.as_deref());
+        anyhow::bail!("Could not find a valid assignment after {} attempts.", MAX_ATTEMPTS);
     }
+
+    info!("🎉 Done.");
+    Ok(())
 }
