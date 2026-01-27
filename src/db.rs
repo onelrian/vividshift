@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use crate::models::*;
 use crate::schema::assignments::dsl as assignments_dsl;
 use crate::schema::people::dsl as people_dsl;
+use tracing::info;
 
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
@@ -87,9 +88,9 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
         Some(date) => {
             let now = Utc::now().naive_utc();
             let days_diff = (now - date).num_days();
-            println!("Days Now: {} ", now );
-            println!("Days Date: {} ", date );
-            println!("Days Left: {} ", days_diff );
+            info!("Days Now: {} ", now );
+            info!("Days Date: {} ", date );
+            info!("Days Left: {} ", days_diff );
             Ok(days_diff >= 14 )
         }
         None => Ok(true), // No history, so we should run

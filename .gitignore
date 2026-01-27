@@ -2,3 +2,4 @@ target/
 .mcp/
 logs/
 *.log
+AI_SESSION_PROMPT.md
