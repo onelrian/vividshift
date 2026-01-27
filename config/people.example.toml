@@ -42,95 +42,14 @@ constraints = ["cannot_perform_toilet_a"]
 # Group A Members (8 people)
 # -----------------------------------------------------------------------------
 
+# ... (header omitted for brevity)
+
 [[person]]
-name = "Onel"
+name = "Example Person 1"
 group = "A"
 active = true
 
 [[person]]
-name = "Prosper"
-group = "A"
-active = true
-
-[[person]]
-name = "Derick"
-group = "A"
-active = true
-
-[[person]]
-name = "Nathan"
-group = "A"
-active = true
-
-[[person]]
-name = "Junine"
-group = "A"
-active = true
-
-[[person]]
-name = "Maxwell"
-group = "A"
-active = true
-
-[[person]]
-name = "Severian"
-group = "A"
-active = true
-
-[[person]]
-name = "Frank"
-group = "A"
-active = true
-
-# Group B Members (10 people)
-# -----------------------------------------------------------------------------
-
-[[person]]
-name = "Emmanuel"
-group = "B"
-active = true
-
-[[person]]
-name = "Romeo"
-group = "B"
-active = true
-
-[[person]]
-name = "Ghislain"
-group = "B"
-active = true
-
-[[person]]
-name = "Vitalis"
-group = "B"
-active = true
-
-[[person]]
-name = "Richmond"
-group = "B"
-active = true
-
-[[person]]
-name = "Christian"
-group = "B"
-active = true
-
-[[person]]
-name = "Michael"
-group = "B"
-active = true
-
-[[person]]
-name = "Mark"
-group = "B"
-active = true
-
-[[person]]
-name = "Usher"
-group = "B"
-active = true
-
-[[person]]
-name = "Desmond"
+name = "Example Person 2"
 group = "B"
 active = true

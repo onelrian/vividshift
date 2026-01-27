@@ -1,4 +1,6 @@
-target/
+/target/
+config/people.toml
+
 .mcp/
 logs/
 *.log

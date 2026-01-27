@@ -3,6 +3,8 @@
 ## Overview
 
 Structured TOML configuration for managing resident data, replacing legacy `file_a.txt` and `file_b.txt`.
+> [!IMPORTANT]
+> `config/people.toml` is git-ignored to protect real names. Use `config/people.example.toml` as a template for new environments.
 
 ### File Structure
 
