@@ -7,6 +7,9 @@ pub struct Settings {
     pub database_url: String,
     pub work_assignments: HashMap<String, usize>,
     pub github_env_path: Option<String>,
+    /// Configurable interval in days between assignment shuffles
+    /// Defaults to 14 if not specified
+    pub assignment_interval_days: Option<i64>,
 }
 
 impl Settings {
@@ -26,5 +29,33 @@ impl Settings {
             .build()?;
 
         s.try_deserialize()
+    }
+
+    /// Returns the configured assignment interval in days with validation
+    /// - Defaults to 14 days if not specified
+    /// - Validates range: 1-365 days
+    /// - Invalid values are clamped to valid range
+    pub fn assignment_interval_days(&self) -> i64 {
+        match self.assignment_interval_days {
+            Some(interval) => {
+                // Validate and clamp to reasonable range
+                if interval < 1 {
+                    tracing::warn!(
+                        "Invalid assignment_interval_days: {}. Defaulting to 14.",
+                        interval
+                    );
+                    14
+                } else if interval > 365 {
+                    tracing::warn!(
+                        "Assignment interval {} exceeds maximum (365 days). Using 365.",
+                        interval
+                    );
+                    365
+                } else {
+                    interval
+                }
+            }
+            None => 14, // Default to 14 days
+        }
     }
 }
