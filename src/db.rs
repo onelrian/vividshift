@@ -114,8 +114,9 @@ pub fn fetch_history(
     Ok(history_map)
 }
 
-/// Checks if it has been 14 days since the last assignment run.
-pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
+/// Checks if enough time has passed since the last assignment run.
+/// Uses the configured interval_days instead of a hardcoded value.
+pub fn should_run(conn: &mut PgConnection, interval_days: i64) -> QueryResult<bool> {
     use diesel::dsl::max;
 
     let last_run: Option<NaiveDateTime> = assignments_dsl::assignments
@@ -128,8 +129,8 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
             let days_diff = (now - date).num_days();
             info!("Days Now: {} ", now);
             info!("Days Date: {} ", date);
-            info!("Days Left: {} ", days_diff);
-            Ok(days_diff >= 14)
+            info!("Days since last run: {} (interval: {})", days_diff, interval_days);
+            Ok(days_diff >= interval_days)
         }
         None => Ok(true), // No history, so we should run
     }

@@ -49,11 +49,14 @@ fn main() -> anyhow::Result<()> {
     let pool = db::establish_connection(&settings.database_url);
     let mut conn = pool.get().context("Failed to get DB connection")?;
 
-    // 4. Check Schedule (14 day rule)
-    match db::should_run(&mut conn) {
-        Ok(true) => info!("✅ It has been 14+ days (or first run). Proceeding."),
+    // 4. Check Schedule (configurable interval)
+    let interval = settings.assignment_interval_days();
+    info!("⏱️  Assignment interval configured: {} days", interval);
+    
+    match db::should_run(&mut conn, interval) {
+        Ok(true) => info!("✅ It has been {}+ days (or first run). Proceeding.", interval),
         Ok(false) => {
-            info!("⏳ It has NOT been 14 days since the last run. Skipping.");
+            info!("⏳ It has NOT been {} days since the last run. Skipping.", interval);
             set_github_output(false, settings.github_env_path.as_deref());
             return Ok(());
         }

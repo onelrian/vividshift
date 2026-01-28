@@ -1,9 +1,12 @@
-name: Bi-Weekly Work Generator
+name: Work Assignment Generator
 
+# Default to manual/API triggering for efficiency.
+# See README.md for scheduling options (external scheduler, cron, etc.)
 on:
-  schedule:
-    - cron: '0 9 * * *' # Run every day to check eligibility
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # Manual trigger
+  # Uncomment for daily automated checks (less efficient):
+  # schedule:
+  #   - cron: '0 9 * * *' # Daily at 9 AM UTC
 
 jobs:
   run-generator:
@@ -28,9 +31,10 @@ jobs:
       - name: Build and Run
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          APP__ASSIGNMENT_INTERVAL_DAYS: ${{ secrets.ASSIGNMENT_INTERVAL_DAYS || '14' }}
         run: |
-          # The Rust app itself will handle the "check date" logic.
-          # It will also set SHOULD_NOTIFY=true/false in GITHUB_ENV.
+          # The app checks if scheduled interval has passed.
+          # It sets SHOULD_NOTIFY=true/false in GITHUB_ENV.
           cargo run --release > output.txt
           cat output.txt
 
