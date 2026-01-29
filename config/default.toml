@@ -1,3 +1,10 @@
+# VividShift Default Configuration
+
+# Assignment interval: How many days between shuffling work assignments
+# Valid range: 1-365 days
+# Common values: 7 (weekly), 14 (bi-weekly), 30 (monthly)
+assignment_interval_days = 14
+
 [work_assignments]
 "Parlor" = 5
 "Frontyard" = 3

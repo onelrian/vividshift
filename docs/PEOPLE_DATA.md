@@ -12,6 +12,8 @@ Structured TOML configuration for managing resident data, replacing legacy `file
 - **Module**: `src/people_config.rs`
 - **Tests**: `tests/people_config_test.rs`
 
+> **Related**: See [README.md](../README.md#3-configure-assignment-interval-optional) for scheduling interval configuration.
+
 ### Extending Metadata
 
 To add new fields (e.g., email, preferences):

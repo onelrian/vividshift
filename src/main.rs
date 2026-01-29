@@ -1,10 +1,14 @@
+mod api;
+mod auth;  // Password hashing utilities
 mod config;
 mod db;
+mod discord;
 mod group;
 mod models;
 mod output;
 mod people_config;
 mod schema;
+mod assignment_engine;
 
 use anyhow::Context;
 use std::env;
@@ -36,94 +40,57 @@ fn set_github_output(should_notify: bool, env_path: Option<&str>) {
     }
 }
 
-fn main() -> anyhow::Result<()> {
-    // 1. Initialize Logging
-    tracing_subscriber::fmt::init();
-    info!("🚀 Starting Work Group Generator...");
+async fn run_distribution() -> anyhow::Result<()> {
+    info!("🔄 Running scheduled work distribution...");
 
-    // 2. Load Configuration
+    // 1. Load Configuration
     let settings = config::Settings::new().context("Failed to load configuration")?;
     info!("✅ Configuration loaded.");
 
-    // 3. Connect to DB
-    let pool = db::establish_connection(&settings.database_url);
+    // 2. Connect to DB
+    let pool = db::establish_connection(&settings.database_url)?;
     let mut conn = pool.get().context("Failed to get DB connection")?;
 
-    // 4. Check Schedule (14 day rule)
-    match db::should_run(&mut conn) {
-        Ok(true) => info!("✅ It has been 14+ days (or first run). Proceeding."),
-        Ok(false) => {
-            info!("⏳ It has NOT been 14 days since the last run. Skipping.");
-            set_github_output(false, settings.github_env_path.as_deref());
-            return Ok(());
+    match assignment_engine::perform_distribution(&mut conn, &settings, false).await {
+        Ok(run) => {
+            if run {
+                set_github_output(true, settings.github_env_path.as_deref());
+            } else {
+                set_github_output(false, settings.github_env_path.as_deref());
+            }
         }
         Err(e) => {
-            error!("🔥 Error checking schedule: {}", e);
             set_github_output(false, settings.github_env_path.as_deref());
-            return Err(anyhow::anyhow!("Error checking schedule: {}", e));
+            return Err(e);
         }
     }
 
-    let work_areas = &settings.work_assignments;
-    info!("📋 Work assignments loaded: {:?}", work_areas.keys());
+    Ok(())
+}
 
-    // 5. Fetch People
-    let (names_a, names_b, name_to_id) =
-        db::fetch_people(&mut conn).context("Failed to fetch people")?;
-    info!(
-        "👥 Fetched {} active people (Group A: {}, Group B: {})",
-        names_a.len() + names_b.len(),
-        names_a.len(),
-        names_b.len()
-    );
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // 1. Initialize Logging
+    dotenvy::dotenv().ok();
+    tracing_subscriber::fmt::init();
+    info!("🚀 Starting VividShift...");
 
-    // 6. Fetch History
-    info!("🔍 Reading assignment history from DB...");
-    let history = db::fetch_history(&mut conn, &name_to_id).context("Failed to fetch history")?;
-
-    // 7. Generate Assignments (Start Retry Loop)
-    info!("🔄 Generating new work distribution...");
-    let mut final_assignments = None;
-    const MAX_ATTEMPTS: u32 = 500;
-
-    for attempt in 1..=MAX_ATTEMPTS {
-        match group::distribute_work(&names_a, &names_b, work_areas, &history) {
-            Ok(new_assignments) => {
-                info!(
-                    "✅ Successfully found a valid assignment on attempt {}!",
-                    attempt
-                );
-                final_assignments = Some(new_assignments);
-                break;
-            }
-            Err(_) => continue,
-        }
-    }
-
-    // 8. Save and Output
-    if let Some(assignments) = final_assignments {
-        output::print_assignments(&assignments);
-        if let Err(e) = db::save_assignments(&mut conn, &assignments, &name_to_id) {
-            error!(
-                "🔥 CRITICAL ERROR: Failed to save new assignments to DB: {}",
-                e
-            );
-            set_github_output(false, settings.github_env_path.as_deref());
-            return Err(anyhow::anyhow!("Failed to save assignments: {}", e));
+    let args: Vec<String> = env::args().collect();
+    let mode = env::var("VIVIDSHIFT_MODE").unwrap_or_else(|_| {
+        if args.contains(&"server".to_string()) {
+            "server".to_string()
         } else {
-            info!("💾 Assignment history has been saved to the database.");
-            set_github_output(true, settings.github_env_path.as_deref());
+            "cli".to_string()
         }
+    });
+
+    if mode == "server" {
+        let settings = config::Settings::new().context("Failed to load configuration")?;
+        let pool = db::establish_connection(&settings.database_url)?;
+        db::init_admin_user(&pool, &settings).await.context("Failed to initialize admin user")?;
+        api::start_server(settings, pool).await?;
     } else {
-        error!(
-            "🔥 CRITICAL ERROR: Could not find a valid assignment after {} attempts.",
-            MAX_ATTEMPTS
-        );
-        set_github_output(false, settings.github_env_path.as_deref());
-        anyhow::bail!(
-            "Could not find a valid assignment after {} attempts.",
-            MAX_ATTEMPTS
-        );
+        run_distribution().await?;
     }
 
     info!("🎉 Done.");

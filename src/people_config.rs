@@ -17,9 +17,12 @@
 //! ```no_run
 //! use work_group_generator::people_config::PeopleConfiguration;
 //!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let config = PeopleConfiguration::load()?;
 //! let group_a_people = config.get_people_by_group("A");
 //! let active_people = config.get_active_people();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! # Error Handling
@@ -132,7 +135,11 @@ impl PeopleConfiguration {
     /// # Example
     ///
     /// ```no_run
+    /// use work_group_generator::people_config::PeopleConfiguration;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let config = PeopleConfiguration::load()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn load() -> Result<Self, ConfigError> {
         Self::load_from_path(Self::DEFAULT_CONFIG_PATH)

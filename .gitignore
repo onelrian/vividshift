@@ -4,4 +4,7 @@ config/people.toml
 .mcp/
 logs/
 *.log
-AI_SESSION_PROMPT.md
+
+# Workspace configuration
+.agent/
+.env
