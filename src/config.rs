@@ -10,6 +10,8 @@ pub struct Settings {
     /// Configurable interval in days between assignment shuffles
     /// Defaults to 14 if not specified
     pub assignment_interval_days: Option<i64>,
+    pub discord_webhook_url: Option<String>,
+    pub discord_enabled: Option<bool>,
 }
 
 impl Settings {
@@ -26,6 +28,8 @@ impl Settings {
             .add_source(config::Environment::with_prefix("APP").separator("__"))
             .set_override_option("database_url", std::env::var("DATABASE_URL").ok())?
             .set_override_option("github_env_path", std::env::var("GITHUB_ENV").ok())?
+            .set_override_option("discord_webhook_url", std::env::var("DISCORD_WEBHOOK_URL").ok())?
+            .set_override_option("discord_enabled", std::env::var("DISCORD_ENABLED").ok().map(|v| v == "true" || v == "1"))?
             .build()?;
 
         s.try_deserialize()

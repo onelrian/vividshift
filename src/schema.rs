@@ -18,6 +18,13 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    settings (key) {
+        key -> Text,
+        value -> Text,
+    }
+}
+
 diesel::joinable!(assignments -> people (person_id));
 
-diesel::allow_tables_to_appear_in_same_query!(assignments, people,);
+diesel::allow_tables_to_appear_in_same_query!(assignments, people, settings);
