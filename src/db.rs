@@ -1,3 +1,4 @@
+use anyhow::Context;
 use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
@@ -8,13 +9,28 @@ use crate::schema::assignments::dsl as assignments_dsl;
 use crate::schema::people::dsl as people_dsl;
 use tracing::info;
 
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-pub fn establish_connection(database_url: &str) -> DbPool {
+pub fn establish_connection(database_url: &str) -> anyhow::Result<DbPool> {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
-    r2d2::Pool::builder()
+    let pool = r2d2::Pool::builder()
         .build(manager)
-        .expect("Failed to create pool.")
+        .context("Failed to create database pool")?;
+    
+    // Run migrations on startup
+    if let Ok(mut conn) = pool.get() {
+        if let Err(e) = conn.run_pending_migrations(MIGRATIONS) {
+            tracing::error!("Failed to run database migrations: {}", e);
+        } else {
+            tracing::info!("Database migrations applied successfully.");
+        }
+    }
+
+    Ok(pool)
 }
 
 /// Fetches all active people from the database, separated by group.
@@ -22,55 +38,32 @@ pub fn establish_connection(database_url: &str) -> DbPool {
 pub fn fetch_people(
     conn: &mut PgConnection,
 ) -> QueryResult<(Vec<String>, Vec<String>, HashMap<String, i32>)> {
-    use crate::people_config::PeopleConfiguration;
-    use tracing::warn;
-
-    // Load configuration from people.toml
-    let config = PeopleConfiguration::load().map_err(|e| {
-        diesel::result::Error::DatabaseError(
-            diesel::result::DatabaseErrorKind::Unknown,
-            Box::new(format!("Failed to load people configuration: {}", e)),
-        )
-    })?;
-
-    // Fetch all people from database to get their IDs
-    let all_db_people = people_dsl::people.load::<Person>(conn)?;
+    // Fetch active people directly from database
+    let active_people = people_dsl::people
+        .filter(people_dsl::active.eq(true))
+        .load::<Person>(conn)?;
 
     let mut names_a = Vec::new();
     let mut names_b = Vec::new();
     let mut name_to_id = HashMap::new();
 
-    // Build name-to-id mapping from database
-    let db_name_to_id: HashMap<String, i32> = all_db_people
-        .iter()
-        .map(|p| (p.name.clone(), p.id))
-        .collect();
+    for person in active_people {
+        name_to_id.insert(person.name.clone(), person.id);
 
-    // Use config as source of truth for active people and groups
-    for person_config in config.get_active_people() {
-        if let Some(&person_id) = db_name_to_id.get(&person_config.name) {
-            name_to_id.insert(person_config.name.clone(), person_id);
-
-            if person_config.group == "A" {
-                names_a.push(person_config.name.clone());
-            } else if person_config.group == "B" {
-                names_b.push(person_config.name.clone());
-            } else {
-                warn!(
-                    "Person '{}' has unknown group '{}', skipping",
-                    person_config.name, person_config.group
+        match person.group_type.as_str() {
+            "A" => names_a.push(person.name),
+            "B" => names_b.push(person.name),
+            _ => {
+                tracing::warn!(
+                    "Person '{}' (ID: {}) has unknown group '{}', skipping for distribution",
+                    person.name, person.id, person.group_type
                 );
             }
-        } else {
-            warn!(
-                "Person '{}' from config not found in database, skipping",
-                person_config.name
-            );
         }
     }
 
     info!(
-        "Loaded {} people from config (Group A: {}, Group B: {})",
+        "Loaded {} active people from database (Group A: {}, Group B: {})",
         names_a.len() + names_b.len(),
         names_a.len(),
         names_b.len()
@@ -114,8 +107,9 @@ pub fn fetch_history(
     Ok(history_map)
 }
 
-/// Checks if it has been 14 days since the last assignment run.
-pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
+/// Checks if enough time has passed since the last assignment run.
+/// Uses the configured interval_days instead of a hardcoded value.
+pub fn should_run(conn: &mut PgConnection, interval_days: i64) -> QueryResult<bool> {
     use diesel::dsl::max;
 
     let last_run: Option<NaiveDateTime> = assignments_dsl::assignments
@@ -128,8 +122,8 @@ pub fn should_run(conn: &mut PgConnection) -> QueryResult<bool> {
             let days_diff = (now - date).num_days();
             info!("Days Now: {} ", now);
             info!("Days Date: {} ", date);
-            info!("Days Left: {} ", days_diff);
-            Ok(days_diff >= 14)
+            info!("Days since last run: {} (interval: {})", days_diff, interval_days);
+            Ok(days_diff >= interval_days)
         }
         None => Ok(true), // No history, so we should run
     }
@@ -158,4 +152,11 @@ pub fn save_assignments(
         }
     }
     Ok(())
+}
+
+pub fn fetch_db_settings(conn: &mut PgConnection) -> QueryResult<HashMap<String, String>> {
+    let settings = crate::schema::settings::table
+        .load::<Setting>(conn)?;
+    
+    Ok(settings.into_iter().map(|s| (s.key, s.value)).collect())
 }
