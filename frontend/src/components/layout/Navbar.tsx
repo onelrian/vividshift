@@ -4,6 +4,7 @@ import {
     Calendar,
     Settings as SettingsIcon,
     Users,
+    UserCog,
     ShieldCheck,
     ChevronRight,
     LogOut
@@ -12,13 +13,16 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 export const Navbar = () => {
-    const { signOut } = useAuth();
+    const { isAdmin, signOut } = useAuth();
     const location = useLocation();
 
     const navItems = [
         { icon: BarChart3, label: "Dashboard", href: "/" },
         { icon: Calendar, label: "History", href: "/history" },
-        { icon: Users, label: "People", href: "/people" },
+        ...(isAdmin ? [
+            { icon: Users, label: "People", href: "/people" },
+            { icon: UserCog, label: "User Management", href: "/admin/users" }
+        ] : []),
         { icon: SettingsIcon, label: "Settings", href: "/settings" },
     ];
 

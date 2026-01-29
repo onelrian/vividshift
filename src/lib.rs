@@ -2,6 +2,7 @@
 //!
 //! This library provides modules for managing work group assignments.
 
+pub mod auth;
 pub mod config;
 pub mod db;
 pub mod discord;

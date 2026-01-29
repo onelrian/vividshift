@@ -15,6 +15,69 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+pub async fn init_admin_user(pool: &DbPool, settings: &crate::config::Settings) -> anyhow::Result<()> {
+    use crate::schema::users::dsl::*;
+    use uuid::Uuid;
+    use crate::models::NewUser;
+    
+    let mut conn = pool.get().context("Failed to get DB connection for admin init")?;
+    
+    let admin_email_value = &settings.admin_email;
+    
+    // Check if admin already exists in database
+    let existing = users
+        .filter(email.eq(admin_email_value))
+        .first::<UserRole>(&mut conn)
+        .optional()?;
+
+    if existing.is_none() {
+        info!("👤 Initializing default admin user (local auth)...");
+        
+        // Hash the admin password
+        let hashed_pwd = crate::auth::hash_password(&settings.admin_password)
+            .context("Failed to hash admin password")?;
+        
+        // Generate a new UUID for the admin
+        let new_user_id = Uuid::new_v4().to_string();
+        
+        // Extract username from email (part before @)
+        let username_value = admin_email_value
+            .split('@')
+            .next()
+            .unwrap_or("admin")
+            .to_string();
+            
+        // Create corresponding database record
+        let new_admin = NewUser {
+            id: new_user_id.clone(),
+            username: username_value,
+            email: admin_email_value.to_string(),
+            role: "ADMIN".to_string(),
+            password_hash: match Some(hashed_pwd) { Some(h) => h, None => return Err(anyhow::anyhow!("Hash failed")) },
+        };
+
+        // Use INSERT ... ON CONFLICT DO NOTHING to handle race conditions
+        diesel::insert_into(users)
+            .values(&new_admin)
+            .on_conflict_do_nothing()
+            .execute(&mut conn)
+            .context("Failed to insert default admin user into database")?;
+            
+        info!("✅ Admin user created with ID: {}", new_user_id);
+    } else {
+        info!("ℹ️  Admin user already exists in DB.");
+    }
+
+    Ok(())
+}
+
+/// Checks if the given email matches the default admin email from settings
+pub fn is_default_admin(email: &str, settings: &crate::config::Settings) -> bool {
+    email == settings.admin_email
+}
+
+
+
 pub fn establish_connection(database_url: &str) -> anyhow::Result<DbPool> {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = r2d2::Pool::builder()

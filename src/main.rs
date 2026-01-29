@@ -1,4 +1,5 @@
 mod api;
+mod auth;  // Password hashing utilities
 mod config;
 mod db;
 mod discord;
@@ -70,14 +71,24 @@ async fn run_distribution() -> anyhow::Result<()> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // 1. Initialize Logging
+    dotenvy::dotenv().ok();
     tracing_subscriber::fmt::init();
     info!("🚀 Starting VividShift...");
 
-    let mode = env::var("VIVIDSHIFT_MODE").unwrap_or_else(|_| "cli".to_string());
+    let args: Vec<String> = env::args().collect();
+    let mode = env::var("VIVIDSHIFT_MODE").unwrap_or_else(|_| {
+        if args.contains(&"server".to_string()) {
+            "server".to_string()
+        } else {
+            "cli".to_string()
+        }
+    });
 
     if mode == "server" {
         let settings = config::Settings::new().context("Failed to load configuration")?;
-        api::start_server(settings).await?;
+        let pool = db::establish_connection(&settings.database_url)?;
+        db::init_admin_user(&pool, &settings).await.context("Failed to initialize admin user")?;
+        api::start_server(settings, pool).await?;
     } else {
         run_distribution().await?;
     }

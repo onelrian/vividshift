@@ -10,7 +10,7 @@ import { Layout } from "../components/layout/Layout";
 import type { DashboardData } from "../types";
 
 export const Dashboard = () => {
-    const { session } = useAuth();
+    const { session, isAdmin } = useAuth();
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -120,16 +120,18 @@ export const Dashboard = () => {
                                 <h3 className="font-bold mb-1">Manage Groups</h3>
                                 <p className="text-sm text-muted-foreground">{data?.people.length ?? 0} active members synced</p>
                             </div>
-                            <div
-                                onClick={triggerShuffle}
-                                className={`glass p-8 rounded-3xl hover:border-accent/30 transition-colors group cursor-pointer border border-border/30 ${shuffling ? 'opacity-50 pointer-events-none' : ''}`}
-                            >
-                                <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                                    <Calendar className={`text-accent w-6 h-6 ${shuffling ? 'animate-bounce' : ''}`} />
+                            {isAdmin && (
+                                <div
+                                    onClick={triggerShuffle}
+                                    className={`glass p-8 rounded-3xl hover:border-accent/30 transition-colors group cursor-pointer border border-border/30 ${shuffling ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <Calendar className={`text-accent w-6 h-6 ${shuffling ? 'animate-bounce' : ''}`} />
+                                    </div>
+                                    <h3 className="font-bold mb-1">Manual Trigger</h3>
+                                    <p className="text-sm text-muted-foreground">Force re-shuffling now</p>
                                 </div>
-                                <h3 className="font-bold mb-1">Manual Trigger</h3>
-                                <p className="text-sm text-muted-foreground">Force re-shuffling now</p>
-                            </div>
+                            )}
                         </div>
                     </div>
 

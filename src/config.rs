@@ -12,6 +12,12 @@ pub struct Settings {
     pub assignment_interval_days: Option<i64>,
     pub discord_webhook_url: Option<String>,
     pub discord_enabled: Option<bool>,
+    /// Admin email for initial admin account
+    pub admin_email: String,
+    /// Admin password for initial admin account
+    pub admin_password: String,
+    /// JWT secret for signing custom JWTs
+    pub jwt_secret: String,
 }
 
 impl Settings {
@@ -30,6 +36,9 @@ impl Settings {
             .set_override_option("github_env_path", std::env::var("GITHUB_ENV").ok())?
             .set_override_option("discord_webhook_url", std::env::var("DISCORD_WEBHOOK_URL").ok())?
             .set_override_option("discord_enabled", std::env::var("DISCORD_ENABLED").ok().map(|v| v == "true" || v == "1"))?
+            .set_override_option("admin_email", std::env::var("ADMIN_EMAIL").ok())?
+            .set_override_option("admin_password", std::env::var("ADMIN_PASSWORD").ok())?
+            .set_override_option("jwt_secret", std::env::var("JWT_SECRET").ok())?
             .build()?;
 
         s.try_deserialize()

@@ -1,23 +1,32 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, Mail, Lock, ArrowRight } from "lucide-react";
+import { ShieldCheck, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 export const Login = () => {
-    const { signIn } = useAuth();
+    const { signIn, signUp } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccess(null);
         try {
-            await signIn(email, password);
+            if (isLogin) {
+                await signIn(email, password);
+            } else {
+                await signUp(email, password);
+                setSuccess("Check your email for confirmation!");
+            }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to sign in");
+            setError(err instanceof Error ? err.message : "Authentication failed");
         } finally {
             setLoading(false);
         }
@@ -49,7 +58,9 @@ export const Login = () => {
                         <h1 className="text-4xl font-black tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80">
                             VividShift
                         </h1>
-                        <p className="text-muted-foreground font-medium">Secure Admin Control Panel</p>
+                        <p className="text-muted-foreground font-medium">
+                            {isLogin ? "Secure Admin Control Panel" : "Create your account"}
+                        </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -72,12 +83,19 @@ export const Login = () => {
                                 <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5 group-focus-within:text-primary transition-colors" />
                                 <input
                                     required
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full bg-muted/30 border border-border/50 rounded-2xl pl-14 pr-6 py-5 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-lg placeholder:text-muted-foreground/30"
+                                    className="w-full bg-muted/30 border border-border/50 rounded-2xl pl-14 pr-16 py-5 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-lg placeholder:text-muted-foreground/30"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
@@ -91,6 +109,16 @@ export const Login = () => {
                             </motion.div>
                         )}
 
+                        {success && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-sm font-medium text-center"
+                            >
+                                {success}
+                            </motion.div>
+                        )}
+
                         <button
                             disabled={loading}
                             type="submit"
@@ -100,10 +128,18 @@ export const Login = () => {
                                 <div className="w-8 h-8 border-4 border-background border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    Enter Dashboard
+                                    {isLogin ? "Enter Dashboard" : "Sign Up"}
                                     <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                                 </>
                             )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsLogin(!isLogin)}
+                            className="w-full text-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                        >
+                            {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
                         </button>
                     </form>
 

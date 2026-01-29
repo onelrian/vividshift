@@ -1,20 +1,24 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import type { Session, User } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
+    id: string;
+    username: string;
     email: string;
-}
-
-interface Session {
-    access_token: string;
+    role: 'ADMIN' | 'USER';
 }
 
 interface AuthContextType {
     session: Session | null;
     user: User | null;
+    profile: UserProfile | null;
+    isAdmin: boolean;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
-    signOut: () => void;
+    signUp: (email: string, password: string) => Promise<void>;
+    signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,44 +26,69 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const savedSession = localStorage.getItem('vividshift_session');
-        if (savedSession) {
-            const parsed = JSON.parse(savedSession);
-            setSession(parsed);
-            setUser({ email: 'admin@vividshift.io' }); // Simple fallback for now
+    const fetchProfile = async (access_token: string) => {
+        try {
+            const resp = await fetch('/api/auth/profile', {
+                headers: {
+                    'Authorization': `Bearer ${access_token}`
+                }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setProfile(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch profile:', error);
         }
-        setLoading(false);
+    };
+
+    useEffect(() => {
+        // Handle initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session) {
+                fetchProfile(session.access_token);
+            }
+            setLoading(false);
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session) {
+                await fetchProfile(session.access_token);
+            } else {
+                setProfile(null);
+            }
+            setLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const signIn = async (email: string, password: string) => {
-        const resp = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-
-        if (!resp.ok) {
-            throw new Error('Invalid credentials');
-        }
-
-        const data = await resp.json();
-        const newSession = { access_token: data.token };
-        setSession(newSession);
-        setUser({ email });
-        localStorage.setItem('vividshift_session', JSON.stringify(newSession));
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
     };
 
-    const signOut = () => {
-        setSession(null);
-        setUser(null);
-        localStorage.removeItem('vividshift_session');
+    const signUp = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
     };
+
+    const signOut = async () => {
+        await supabase.auth.signOut();
+    };
+
+    const isAdmin = profile?.role === 'ADMIN';
 
     return (
-        <AuthContext.Provider value={{ session, user, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ session, user, profile, isAdmin, loading, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );

@@ -14,13 +14,17 @@ config = "0.13"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
+dotenvy = "0.15"
 thiserror = "1.0"
 toml = "0.8"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
+reqwest = { version = "0.11", features = ["blocking", "json"] }  # HTTP client for Discord webhooks and Supabase Admin API
 tokio = { version = "1.0", features = ["full"] }
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 jsonwebtoken = "9"
+argon2 = "0.5"  # Password hashing
+uuid = { version = "1.20.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+
 
 [dev-dependencies]
 serial_test = "3.2.0"

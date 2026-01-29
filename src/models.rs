@@ -36,6 +36,34 @@ pub struct Setting {
     pub value: String,
 }
 
+#[derive(Queryable, Selectable, Identifiable, Debug, Clone, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct UserRole {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    pub role: String,
+    #[serde(skip_serializing)]  // Never send password hash to clients
+    pub password_hash: Option<String>,
+}
+
+#[derive(Insertable, Deserialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct NewUser {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    pub role: String,
+    pub password_hash: String,
+}
+
+#[derive(AsChangeset, Deserialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct UpdateUser {
+    pub username: Option<String>,
+    pub role: Option<String>,
+}
+
 #[derive(Queryable, Selectable, Identifiable, Debug, Clone, Serialize)]
 #[diesel(table_name = assignments)]
 #[diesel(belongs_to(Person))]
