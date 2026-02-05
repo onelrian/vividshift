@@ -31,6 +31,9 @@ pub async fn perform_distribution(
         .cloned()
         .or_else(|| settings.discord_webhook_url.clone());
 
+    // 0. Sync People from TOML (Source of Truth)
+    db::sync_people(conn).context("Failed to sync people from configuration")?;
+
     // 1. Check Schedule (configurable interval)
     if !force {
         info!("⏱️  Assignment interval configured: {} days", interval);

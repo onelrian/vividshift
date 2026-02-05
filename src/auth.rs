@@ -4,7 +4,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 /// Hash a password using Argon2
 pub fn hash_password(password: &str) -> Result<String> {

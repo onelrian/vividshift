@@ -23,14 +23,37 @@ pub async fn init_admin_user(pool: &DbPool, settings: &crate::config::Settings) 
     let mut conn = pool.get().context("Failed to get DB connection for admin init")?;
     
     let admin_email_value = &settings.admin_email;
+        
+    // Extract username from email (part before @)
+    let admin_username_value = admin_email_value
+        .split('@')
+        .next()
+        .unwrap_or("admin")
+        .to_string();
     
-    // Check if admin already exists in database
+    // Check if admin already exists in database by email OR username
     let existing = users
-        .filter(email.eq(admin_email_value))
+        .filter(email.eq(admin_email_value).or(username.eq(&admin_username_value)))
         .first::<UserRole>(&mut conn)
         .optional()?;
 
-    if existing.is_none() {
+    if let Some(user_role) = existing {
+        info!("👤 Admin user exists. Ensuring credentials are up to date...");
+        
+        let hashed_pwd = crate::auth::hash_password(&settings.admin_password)
+            .context("Failed to hash admin password")?;
+            
+        diesel::update(users.find(&user_role.id))
+            .set((
+                email.eq(admin_email_value),
+                password_hash.eq(hashed_pwd),
+                role.eq("ADMIN"),
+            ))
+            .execute(&mut conn)
+            .context("Failed to update admin credentials")?;
+            
+        info!("✅ Admin credentials updated.");
+    } else {
         info!("👤 Initializing default admin user (local auth)...");
         
         // Hash the admin password
@@ -39,33 +62,33 @@ pub async fn init_admin_user(pool: &DbPool, settings: &crate::config::Settings) 
         
         // Generate a new UUID for the admin
         let new_user_id = Uuid::new_v4().to_string();
-        
-        // Extract username from email (part before @)
-        let username_value = admin_email_value
-            .split('@')
-            .next()
-            .unwrap_or("admin")
-            .to_string();
             
         // Create corresponding database record
         let new_admin = NewUser {
             id: new_user_id.clone(),
-            username: username_value,
+            username: admin_username_value,
             email: admin_email_value.to_string(),
             role: "ADMIN".to_string(),
             password_hash: match Some(hashed_pwd) { Some(h) => h, None => return Err(anyhow::anyhow!("Hash failed")) },
         };
 
-        // Use INSERT ... ON CONFLICT DO NOTHING to handle race conditions
-        diesel::insert_into(users)
+        // Use INSERT ... ON CONFLICT (email) DO UPDATE to ensure the admin from .env exists and is correct
+        // We use email as the primary key for conflict resolution here
+        let rows = diesel::insert_into(users)
             .values(&new_admin)
-            .on_conflict_do_nothing()
+            .on_conflict(email) 
+            .do_update()
+            .set((
+                password_hash.eq(&new_admin.password_hash),
+                role.eq("ADMIN"),
+                username.eq(&new_admin.username),
+            ))
             .execute(&mut conn)
-            .context("Failed to insert default admin user into database")?;
+            .context("Failed to initialize default admin user in database")?;
             
-        info!("✅ Admin user created with ID: {}", new_user_id);
-    } else {
-        info!("ℹ️  Admin user already exists in DB.");
+        if rows > 0 {
+            info!("✅ Admin user '{}' initialized successfully.", admin_email_value);
+        }
     }
 
     Ok(())
@@ -94,6 +117,44 @@ pub fn establish_connection(database_url: &str) -> anyhow::Result<DbPool> {
     }
 
     Ok(pool)
+}
+
+pub fn sync_people(conn: &mut PgConnection) -> anyhow::Result<()> {
+    use crate::people_config::PeopleConfiguration;
+    
+    let config = PeopleConfiguration::load().context("Failed to load people.toml")?;
+    info!("🔄 Syncing {} people from people.toml to database...", config.people.len());
+    
+    // 1. Mark all current people as inactive (we will reactivate those found in the TOML)
+    diesel::update(people_dsl::people)
+        .set(people_dsl::active.eq(false))
+        .execute(conn)?;
+        
+    for p in config.people {
+        let existing = people_dsl::people
+            .filter(people_dsl::name.eq(&p.name))
+            .first::<Person>(conn)
+            .optional()?;
+            
+        if let Some(person) = existing {
+            diesel::update(people_dsl::people.find(person.id))
+                .set((
+                    people_dsl::group_type.eq(&p.group),
+                    people_dsl::active.eq(p.active),
+                ))
+                .execute(conn)?;
+        } else {
+            diesel::insert_into(people_dsl::people)
+                .values((
+                    people_dsl::name.eq(&p.name),
+                    people_dsl::group_type.eq(&p.group),
+                    people_dsl::active.eq(p.active),
+                ))
+                .execute(conn)?;
+        }
+    }
+    
+    Ok(())
 }
 
 /// Fetches all active people from the database, separated by group.
@@ -161,7 +222,7 @@ pub fn fetch_history(
         if let Some(name) = id_to_name.get(&assignment.person_id) {
             let entry = history_map.entry(name.clone()).or_insert_with(Vec::new);
             // We only care about the last few assignments for the logic
-            if entry.len() < 5 {
+            if entry.len() < 2 {
                 entry.push(assignment.task_name);
             }
         }

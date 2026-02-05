@@ -7,7 +7,7 @@ use axum::{
     http::{header, request::Parts, StatusCode},
     response::IntoResponse,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use std::sync::Arc;
 use uuid::Uuid;
 use chrono::{Utc, Duration};
@@ -68,6 +68,7 @@ pub async fn login(
     State(settings): State<Arc<crate::config::Settings>>,
     Json(payload): Json<LoginRequest>,
 ) ->  Result<impl IntoResponse, (StatusCode, String)> {
+    info!("Login attempt for email: {}", payload.email);
     let mut conn = pool.get().map_err(|e| {
         error!("DB connection error: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
@@ -91,9 +92,11 @@ pub async fn login(
     };
 
     if !password_valid {
+        warn!("Failed login attempt for email: {}", payload.email);
         return Err((StatusCode::UNAUTHORIZED, "Invalid credentials".to_string()));
     }
 
+    info!("User logged in successfully: {}", user.email);
     // Generate JWT
     let expiration = Utc::now()
         .checked_add_signed(Duration::hours(24))
@@ -127,6 +130,7 @@ pub async fn register(
     State(pool): State<DbPool>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    info!("Registration attempt for email: {}", payload.email);
     let mut conn = pool.get().map_err(|e| {
         error!("DB connection error: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
@@ -143,6 +147,7 @@ pub async fn register(
         })?;
 
     if existing.is_some() {
+        warn!("Registration attempt for existing email: {}", payload.email);
         return Err((StatusCode::BAD_REQUEST, "Email already registered".to_string()));
     }
 
@@ -168,6 +173,7 @@ pub async fn register(
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create user".to_string())
         })?;
 
+    info!("New user registered: {} ({})", created_user.email, created_user.id);
     Ok((StatusCode::CREATED, Json(created_user)))
 }
 

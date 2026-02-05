@@ -20,9 +20,10 @@ pub struct DashboardData {
 }
 
 pub async fn get_dashboard_data(
-    AuthenticatedUser { .. }: AuthenticatedUser,
+    AuthenticatedUser { user, .. }: AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<DashboardData>, StatusCode> {
+    tracing::debug!("Fetching dashboard data for user: {}", user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // 1. Fetch active people
@@ -80,6 +81,7 @@ pub async fn trigger_shuffle(
     AdminUser(_): AdminUser,
     State(state): State<AppState>,
 ) -> Result<Json<ShuffleResponse>, StatusCode> {
+    tracing::info!("Manual shuffle triggered by admin");
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match assignment_engine::perform_distribution(&mut conn, &state.settings, true).await {
@@ -102,9 +104,10 @@ pub async fn trigger_shuffle(
 // --- People Management ---
 
 pub async fn list_people(
-    AuthenticatedUser { .. }: AuthenticatedUser,
+    AuthenticatedUser { user, .. }: AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Person>>, StatusCode> {
+    tracing::info!("Listing all people (requested by {})", user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     crate::schema::people::table
@@ -119,6 +122,7 @@ pub async fn create_person(
     State(state): State<AppState>,
     Json(payload): Json<NewPerson>,
 ) -> Result<Json<Person>, StatusCode> {
+    tracing::info!("Creating new person '{}' by admin", payload.name);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     diesel::insert_into(crate::schema::people::table)
@@ -134,12 +138,16 @@ pub async fn update_person(
     Path(id): Path<i32>,
     Json(payload): Json<UpdatePerson>,
 ) -> Result<Json<Person>, StatusCode> {
+    tracing::info!("Updating person ID {} by admin", id);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     diesel::update(crate::schema::people::table.find(id))
         .set(&payload)
         .get_result::<Person>(&mut conn)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|e| {
+            tracing::error!("Failed to update person ID {}: {}", id, e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
         .map(Json)
 }
 
@@ -148,11 +156,15 @@ pub async fn delete_person(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, StatusCode> {
+    tracing::info!("Deleting person ID {} by admin", id);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     diesel::delete(crate::schema::people::table.find(id))
         .execute(&mut conn)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to delete person ID {}: {}", id, e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
         
     Ok(StatusCode::NO_CONTENT)
 }
@@ -160,9 +172,10 @@ pub async fn delete_person(
 // --- Assignment History ---
 
 pub async fn get_assignment_history(
-    AuthenticatedUser { .. }: AuthenticatedUser,
+    AuthenticatedUser { user, .. }: AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Assignment>>, StatusCode> {
+    tracing::info!("Fetching assignment history (requested by {})", user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     crate::schema::assignments::table
@@ -175,9 +188,10 @@ pub async fn get_assignment_history(
 // --- Settings Management ---
 
 pub async fn get_app_settings(
-    AuthenticatedUser { .. }: AuthenticatedUser,
+    AuthenticatedUser { user, .. }: AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<HashMap<String, String>>, StatusCode> {
+    tracing::info!("Fetching application settings (requested by {})", user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     crate::db::fetch_db_settings(&mut conn)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -189,6 +203,7 @@ pub async fn update_app_setting(
     State(state): State<AppState>,
     Json(payload): Json<Setting>,
 ) -> Result<Json<Setting>, StatusCode> {
+    tracing::info!("Updating setting '{}' to '{}' by admin", payload.key, payload.value);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     diesel::insert_into(crate::schema::settings::table)
@@ -206,6 +221,7 @@ pub async fn update_app_setting(
 pub async fn get_profile(
     AuthenticatedUser { user, .. }: AuthenticatedUser,
 ) -> Result<Json<UserRole>, StatusCode> {
+    tracing::info!("Fetching profile for user: {}", user.email);
     Ok(Json(user))
 }
 
@@ -214,6 +230,7 @@ pub async fn update_profile(
     State(state): State<AppState>,
     Json(payload): Json<UpdateUser>,
 ) -> Result<Json<UserRole>, StatusCode> {
+    tracing::info!("Updating profile for user: {}", user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     // Only allow updating username. Roles can only be changed by Admin via another endpoint (to be added)
@@ -232,9 +249,10 @@ pub async fn update_profile(
 // --- Admin User Management ---
 
 pub async fn list_users(
-    AdminUser(_): AdminUser,
+    AdminUser(auth_user): AdminUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<UserRole>>, StatusCode> {
+    tracing::info!("Admin '{}' listing all registered users", auth_user.user.email);
     let mut conn = state.db_pool.get().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     users::table

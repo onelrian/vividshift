@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use rand::seq::SliceRandom;
 use std::collections::{HashMap, HashSet};
+use tracing::warn;
 
 /// Generates new work assignments using a hybrid rotation strategy to satisfy all constraints.
 pub fn distribute_work(
@@ -26,13 +27,13 @@ pub fn distribute_work(
             let person_history = history.get(person).map_or(Vec::new(), |h| h.clone());
 
             // --- HYBRID ELIGIBILITY CHECK ---
-            let has_worked_here_recently = if *area == "Toilet B" {
-                // For the highly constrained Toilet B, only check the single most recent assignment.
+            let has_worked_here_recently = if *area == "Toilet A" || *area == "Toilet B" {
+                // For the highly constrained Toilet A & B, only check the single most recent assignment.
                 person_history
                     .first()
                     .map_or(false, |last_area| last_area == area)
             } else {
-                // For all other tasks, use the standard long-term history check.
+                // For all other tasks, use the standard long-term history check (last 2 assignments).
                 person_history.contains(area)
             };
 
@@ -58,6 +59,7 @@ pub fn distribute_work(
 
         if let Some((task_name, potential_assignees)) = most_constrained_task {
             if potential_assignees.is_empty() {
+                warn!("Assignment failed: Task '{}' has no eligible candidates left.", task_name);
                 bail!(
                     "could not find a valid assignment. Task '{}' needs {} more person/people, but has no eligible candidates left.",
                     task_name, work_areas[task_name] - assignments[task_name].len()

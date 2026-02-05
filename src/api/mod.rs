@@ -5,13 +5,14 @@ use anyhow::Context;
 use axum::{
     routing::{get, post, patch, delete},
     Router,
-    extract::FromRef,
+    extract::{FromRef, Json},
 };
+use serde_json::json;
 use tower_http::cors::{CorsLayer, Any};
+use tower_http::trace::TraceLayer;
 use tracing::info;
-use std::net::SocketAddr;
+use tokio::net::TcpListener;
 use std::sync::Arc;
-use std::env;
 use crate::api::auth::AuthState;
 use crate::db::DbPool;
 
@@ -53,6 +54,8 @@ pub async fn start_server(settings: Settings, db_pool: DbPool) -> anyhow::Result
     let jwt_secret = settings.jwt_secret.clone();
     
     let auth_state = Arc::new(AuthState::new(jwt_secret));
+    let address = format!("{}:{}", settings.host, settings.port);
+
     
     let app_state = AppState {
         auth: auth_state,
@@ -85,22 +88,25 @@ pub async fn start_server(settings: Settings, db_pool: DbPool) -> anyhow::Result
         // Assignments
         .route("/api/assignments", get(handlers::get_assignment_history))
         .with_state(app_state)
+        .layer(TraceLayer::new_for_http())
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
                 .allow_headers(Any),
         );
+    
+    let listener = TcpListener::bind(&address).await
+        .with_context(|| format!("Failed to bind to {}", address))?;
+    
+    info!("📡 API Server listening on {}", &address);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    info!("📡 API Server listening on {}", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
 
     Ok(())
 }
 
-async fn health_check() -> &'static str {
-    "OK"
+async fn health_check() -> Json<serde_json::Value> {
+    info!("Health check requested");
+    Json(json!({"status": "OK".to_string()}))
 }

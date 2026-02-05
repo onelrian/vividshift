@@ -18,6 +18,10 @@ pub struct Settings {
     pub admin_password: String,
     /// JWT secret for signing custom JWTs
     pub jwt_secret: String,
+    /// Server host (e.g. localhost)
+    pub host: String,
+    /// Server port (e.g. 8080)
+    pub port: u16,
 }
 
 impl Settings {
@@ -39,6 +43,8 @@ impl Settings {
             .set_override_option("admin_email", std::env::var("ADMIN_EMAIL").ok())?
             .set_override_option("admin_password", std::env::var("ADMIN_PASSWORD").ok())?
             .set_override_option("jwt_secret", std::env::var("JWT_SECRET").ok())?
+            .set_override("host", std::env::var("HOST").ok())?
+            .set_override("port", std::env::var("PORT").ok())?
             .build()?;
 
         s.try_deserialize()
