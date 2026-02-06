@@ -4,7 +4,7 @@ A Rust-based application that automatically distributes household chores among r
 
 ## Features
 
-- **Automated Scheduling**: Runs daily via GitHub Actions but only generates assignments every 14 days
+- **Configurable Scheduling**: Assignment interval fully configurable (1-365 days, defaults to 14)
 - **Fair Rotation**: Tracks assignment history to ensure people don't get the same tasks repeatedly
 - **Group-Based Constraints**: Enforces rules based on group membership (Group A vs Group B)
 - **Discord Integration**: Automatically posts new assignments to Discord when generated
@@ -46,7 +46,30 @@ DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 RUST_LOG=info
 ```
 
-### 3. Run Migrations
+### 3. Configure Assignment Interval (Optional)
+
+The default interval is 14 days. To customize:
+
+**Option 1: Edit configuration file**
+
+Edit `config/default.toml`:
+```toml
+# Assignment interval in days (1-365)
+assignment_interval_days = 7   # Weekly
+# assignment_interval_days = 14  # Bi-weekly (default)
+# assignment_interval_days = 30  # Monthly
+```
+
+**Option 2: Use environment variable**
+
+Add to `.env`:
+```bash
+APP__ASSIGNMENT_INTERVAL_DAYS=7  # Weekly assignments
+```
+
+> **Note**: Environment variables override file configuration. Valid range: 1-365 days.
+
+### 4. Run Migrations
 
 ```bash
 diesel migration run
@@ -56,7 +79,7 @@ This will:
 - Create the `people` and `assignments` tables
 - Seed initial data from legacy files (if present)
 
-### 4. Run the Application
+### 5. Run the Application
 
 ```bash
 cargo run
@@ -92,17 +115,34 @@ Configure these in your GitHub repository settings:
 
 - `DATABASE_URL`: Your Neon PostgreSQL connection string
 - `DISCORD_WEBHOOK`: Discord webhook URL for notifications
+- `ASSIGNMENT_INTERVAL_DAYS` (optional): Override assignment interval (defaults to 14)
 
-### Workflow
+### Workflow Scheduling Options
 
-The workflow runs daily but only sends notifications when new assignments are generated:
+By default, the workflow uses **manual triggering** (`workflow_dispatch`) for efficiency:
 
 ```yaml
-schedule:
-  - cron: '0 9 * * *'  # Daily at 9 AM UTC
+on:
+  workflow_dispatch:  # Trigger manually or via API
 ```
 
-The Rust application enforces the 14-day interval internally.
+**Scheduling Strategies:**
+
+1. **Manual Trigger** (Default)
+   - Run from GitHub Actions UI when needed
+   - Most efficient - no unnecessary workflow runs
+
+2. **External Scheduler** (Recommended for automation)
+   - Use GitHub API with cron service (cron-job.org, etc.)
+   - Trigger only when needed based on interval
+   - Example: Weekly API call triggers workflow
+
+3. **Daily Cron** (Less efficient but simpler)
+   - Uncomment cron schedule in `.github/workflows/worker.yml`
+   - Runs daily but only generates assignments when interval passes
+   - Can waste Actions minutes on unnecessary checks
+
+The Rust application enforces the configured interval regardless of trigger method.
 
 ## Customization
 
